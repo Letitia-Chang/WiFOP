@@ -100,12 +100,23 @@ Checked each external source for newer/more comprehensive versions:
     fully scriptable. `scripts/download_annual_nlcd.py` tiles the CA bounding
     box (EPSG:3857) into 4096x4096px chunks at native 30 m resolution and
     fetches each as its own GeoTIFF.
+  - **Correctness note:** the first download pass used WMS `GetMap`, which
+    returns a *rendered* image — pixel values are color-palette indices
+    (0-16), not real NLCD class codes. Caught this by inspecting a tile's
+    `colorinterp` (`palette`) and comparing unique values against the real
+    NLCD code list (11, 21, 22, ... 95). Fixed by switching to WCS 1.0.0
+    `GetCoverage` in the layer's *native* CRS (EPSG:5070) with a plain
+    `time=` param — WCS 2.0.1's `subset=time(...)` syntax hits a server bug
+    on this layer, and requesting any CRS other than the native one silently
+    returns all-nodata, so both the version and the CRS matter.
   - **Done:** downloaded all 4 years (2020–2023) for California at native 30 m
-    resolution — 110 tiles/year, ~1.6 GB/year, 0 failures. Raw tiles live in
-    `data/raw/nlcd_annual/<year>/` (gitignored).
-  - **Next:** rewrite `src/SRTM_NLCD/2023_NLCD.py` to mosaic these per-year
-    tiles and compute per-grid-cell land-cover fractions for each year
-    separately (not yet started).
+    resolution via `scripts/download_annual_nlcd.py` — 266 tiles/year, 0
+    failures, real class codes verified. Converted to per-year 1 km land-cover
+    composition CSVs via `src/SRTM_NLCD/nlcd_composition.py` (renamed from
+    `2023_NLCD.py`) — 647,990 rows/year, 16 class columns, in
+    `data/processed/nlcd_1km_CA_composition_<year>.csv` (gitignored).
+  - **Next:** update `src/combine_data.py` to join NLCD by year as well as by
+    grid cell (currently joins a single static NLCD table onto all dates).
 - **NASA POWER:** data moved from v10 to v10.2.1 (Sep 2025), API now v2.0 — same
   source, no reason to switch. Decision: keep NASA POWER, just re-pull with the
   current API/version when the pipeline is rebuilt (not a dataset swap).

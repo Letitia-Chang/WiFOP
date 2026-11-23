@@ -2,16 +2,26 @@
 download_annual_nlcd.py
 
 Fetches USGS Annual NLCD Land Cover (Collection 1.2) for California, at native
-30 m resolution, for a list of years, directly from the public GeoServer WMS
-behind the MRLC Viewer (https://www.mrlc.gov/geoserver/wms). No account, API
+30 m resolution, for a list of years, directly from the public GeoServer WCS
+behind the MRLC Viewer (https://www.mrlc.gov/geoserver/wcs). No account, API
 key, or download order is required.
 
-The requested extent is larger than a single WMS request can return, so the
-California bounding box is tiled into fixed-size chunks (in EPSG:3857 meters)
-and each tile is fetched as its own GeoTIFF with FORMAT=image/geotiff and a
-TIME= parameter selecting the year. Output goes to data/raw/nlcd_annual/<year>/
-(gitignored) as one GeoTIFF per tile; mosaicking/reprojecting onto the 5 km
-grid happens downstream in the SRTM_NLCD feature-extraction step.
+Uses WCS 1.0.0 GetCoverage in the layer's native CRS (EPSG:5070), which
+returns the actual NLCD class codes (11, 21, 22, ...). Two alternatives were
+tried and rejected:
+  - WMS GetMap (any format/style) returns a rendered image whose pixel values
+    are palette/color-table indices, not the real class codes.
+  - WCS 2.0.1 GetCoverage with `subset=time(...)` hits a server-side bug on
+    this ImageMosaic layer (NoApplicableCode / "startTime is null").
+WCS 1.0.0 with a plain `time=` parameter and `crs=EPSG:5070` (the coverage's
+native CRS — requesting a different response CRS silently returns all
+nodata) avoids both issues.
+
+The requested extent is larger than a single WCS request can return, so the
+California bounding box (projected to EPSG:5070) is tiled into fixed-size
+chunks and each tile is fetched as its own GeoTIFF. Output goes to
+data/raw/nlcd_annual/<year>/ (gitignored) as one GeoTIFF per tile;
+mosaicking happens downstream in src/SRTM_NLCD/nlcd_composition.py.
 
 Usage:
     python scripts/download_annual_nlcd.py --years 2020 2021 2022 2023
@@ -26,12 +36,13 @@ from pathlib import Path
 
 import requests
 
-WMS_URL = "https://www.mrlc.gov/geoserver/wms"
-LAYER = "mrlc_Land-Cover_conus_year_data:Land-Cover_conus_year_data"
+WCS_URL = "https://www.mrlc.gov/geoserver/wcs"
+COVERAGE = "mrlc_Land-Cover_conus_year_data:Land-Cover_conus_year_data"
 NATIVE_RES_M = 30.0  # Annual NLCD native pixel size, meters
+NATIVE_CRS = "EPSG:5070"  # must match the coverage's native CRS, or WCS 1.0.0 returns all-nodata
 
-# California bounding box, EPSG:3857 (Web Mercator), covers lon -124.48..-114.13 / lat 32.53..42.01
-CA_BBOX_3857 = (-13_857_050.0, 3_858_773.0, -12_704_893.0, 5_159_316.0)
+# California bounding box, EPSG:5070 (projected from lon -124.48..-114.13 / lat 32.53..42.01)
+CA_BBOX_5070 = (-2_620_977.0, 1_446_559.0, -1_482_244.0, 2_253_850.0)
 
 OUT_ROOT = Path(__file__).resolve().parent.parent / "data" / "raw" / "nlcd_annual"
 
@@ -60,26 +71,25 @@ def fetch_tile(year, col, row, tile_bbox, tile_size_px, res_m, out_dir, retries=
         return out_path, "skipped (exists)"
 
     params = {
-        "service": "WMS",
-        "version": "1.3.0",
-        "request": "GetMap",
-        "layers": LAYER,
-        "styles": "",
-        "format": "image/geotiff",
-        "crs": "EPSG:3857",
+        "service": "WCS",
+        "version": "1.0.0",
+        "request": "GetCoverage",
+        "coverage": COVERAGE,
+        "crs": NATIVE_CRS,
         "bbox": f"{tx0},{ty0},{tx1},{ty1}",
         "width": width_px,
         "height": height_px,
-        "time": f"{year}-01-01",
+        "format": "GeoTIFF",
+        "time": f"{year}-01-01T00:00:00.000Z",
     }
 
     last_err = None
     for attempt in range(1, retries + 1):
         try:
-            resp = requests.get(WMS_URL, params=params, timeout=120)
+            resp = requests.get(WCS_URL, params=params, timeout=120)
             resp.raise_for_status()
             if resp.content[:4] not in (b"II*\x00", b"MM\x00*"):
-                raise RuntimeError(f"non-TIFF response ({resp.content[:200]!r})")
+                raise RuntimeError(f"non-TIFF response ({resp.content[:300]!r})")
             out_path.write_bytes(resp.content)
             return out_path, f"ok ({len(resp.content)} bytes)"
         except Exception as e:  # noqa: BLE001
@@ -98,7 +108,7 @@ def main():
     for year in args.years:
         out_dir = OUT_ROOT / str(year)
         out_dir.mkdir(parents=True, exist_ok=True)
-        tiles = list(tile_grid(CA_BBOX_3857, args.tile_size, NATIVE_RES_M))
+        tiles = list(tile_grid(CA_BBOX_5070, args.tile_size, NATIVE_RES_M))
         print(f"[{year}] {len(tiles)} tiles -> {out_dir}")
 
         with ThreadPoolExecutor(max_workers=args.workers) as ex:
