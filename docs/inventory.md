@@ -87,16 +87,25 @@ Checked each external source for newer/more comprehensive versions:
   being frozen, which is a real fix, not just a version bump. Decision: rewrite
   `src/SRTM_NLCD/2023_NLCD.py` to pull per-year Annual NLCD (2020, 2021, 2022,
   2023) instead of one static year.
-  - Access options found: (a) MRLC Viewer's Data Download tool — free, AOI via
-    drawn box / polygon / shapefile / GeoJSON, submitted as an async order
-    (confirmation number + download link, no account needed) — see
-    https://www.mrlc.gov/viewer/ ; (b) AWS S3 `s3://usgs-landcover/annual-nlcd/c1/v0/cu/mosaic/`
-    — but this bucket is **Requester Pays** (downloads are billed to an AWS
-    account) and the AWS credentials present on this machine are invalid/expired,
-    so this route isn't usable as-is.
-  - **Open:** need to decide/trigger the MRLC Viewer async order (requires an
-    AOI for California and a notification email) before the download script can
-    be finished — see `docs/inventory.md` open questions below.
+  - Access options considered: (a) MRLC Viewer's Data Download tool — free,
+    AOI-based async order (confirmation number + download link, no account
+    needed), https://www.mrlc.gov/viewer/ — tried first, but the order
+    submission couldn't be confirmed working through the UI (no confirmation
+    dialog or order number ever appeared); (b) AWS S3
+    `s3://usgs-landcover/annual-nlcd/c1/v0/cu/mosaic/` — Requester Pays, and the
+    AWS credentials present on this machine are invalid/expired; (c) **used** —
+    the same GeoServer WMS the Viewer itself calls
+    (`https://www.mrlc.gov/geoserver/wms`), queried directly with
+    `GetMap&FORMAT=image/geotiff&TIME=<year>-01-01` — free, no account/email,
+    fully scriptable. `scripts/download_annual_nlcd.py` tiles the CA bounding
+    box (EPSG:3857) into 4096x4096px chunks at native 30 m resolution and
+    fetches each as its own GeoTIFF.
+  - **Done:** downloaded all 4 years (2020–2023) for California at native 30 m
+    resolution — 110 tiles/year, ~1.6 GB/year, 0 failures. Raw tiles live in
+    `data/raw/nlcd_annual/<year>/` (gitignored).
+  - **Next:** rewrite `src/SRTM_NLCD/2023_NLCD.py` to mosaic these per-year
+    tiles and compute per-grid-cell land-cover fractions for each year
+    separately (not yet started).
 - **NASA POWER:** data moved from v10 to v10.2.1 (Sep 2025), API now v2.0 — same
   source, no reason to switch. Decision: keep NASA POWER, just re-pull with the
   current API/version when the pipeline is rebuilt (not a dataset swap).
