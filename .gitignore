@@ -1,0 +1,31 @@
+# Data (raw, interim, processed) — never commit
+data/
+*.csv.gz
+*.tar.gz
+
+# Model binaries
+models/*.pkl
+models/*.joblib
+*.pkl
+*.h5
+*.pt
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints
+venv/
+.venv/
+env/
+
+# CatBoost training logs
+catboost_info/

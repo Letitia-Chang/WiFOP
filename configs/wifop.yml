@@ -1,0 +1,16 @@
+name: wifop
+channels:
+  - conda-forge
+  - apple
+  - bioconda
+  - anaconda
+  - defaults
+dependencies:
+  - python=3.12
+  - tensorflow
+  - matplotlib
+  - seaborn
+  - ipykernel
+  - scikit-learn
+  - xgboost
+
