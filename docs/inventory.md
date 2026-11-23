@@ -76,6 +76,36 @@ Author column is from `git log -1 --format=%an -- <path>` in the team repo (blan
 - Team's original `README.md`, `local_test.ipynb` — kept only as reference material for writing the new README/credits; not copied verbatim.
 - Solo repo's `scripts/test.py` — scratch file, not needed.
 
+## Dataset refresh (2026-11-23)
+
+Checked each external source for newer/more comprehensive versions:
+
+- **NLCD → swapping to Annual NLCD.** The original project used a single static
+  NLCD land-cover year applied to all of 2020–2023. USGS now publishes **Annual
+  NLCD** (Collection 1.2, released June 2026), a yearly land-cover product
+  covering 1985–2025. This lets `pct_11`, `pct_21`, … vary by year instead of
+  being frozen, which is a real fix, not just a version bump. Decision: rewrite
+  `src/SRTM_NLCD/2023_NLCD.py` to pull per-year Annual NLCD (2020, 2021, 2022,
+  2023) instead of one static year.
+  - Access options found: (a) MRLC Viewer's Data Download tool — free, AOI via
+    drawn box / polygon / shapefile / GeoJSON, submitted as an async order
+    (confirmation number + download link, no account needed) — see
+    https://www.mrlc.gov/viewer/ ; (b) AWS S3 `s3://usgs-landcover/annual-nlcd/c1/v0/cu/mosaic/`
+    — but this bucket is **Requester Pays** (downloads are billed to an AWS
+    account) and the AWS credentials present on this machine are invalid/expired,
+    so this route isn't usable as-is.
+  - **Open:** need to decide/trigger the MRLC Viewer async order (requires an
+    AOI for California and a notification email) before the download script can
+    be finished — see `docs/inventory.md` open questions below.
+- **NASA POWER:** data moved from v10 to v10.2.1 (Sep 2025), API now v2.0 — same
+  source, no reason to switch. Decision: keep NASA POWER, just re-pull with the
+  current API/version when the pipeline is rebuilt (not a dataset swap).
+- **NOAA VIIRS NDVI CDR:** still Version 1; record just extended further in
+  time. Decision: no change.
+- **IRWIN (fire labels):** backend moved to v11 (March 2026) but it's the same
+  restricted-access system (NWCG-affiliated / NIFC open data only); not a
+  swappable "newer dataset." Decision: no change.
+
 ## Open questions for later steps
 
 1. Which grid-generation script is canonical, `scripts/make_grid.py` (solo) or `src/grid_generation.py` (team)? They need to be diffed before the rewrite.
