@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     roc_auc_score, precision_recall_curve,
     classification_report, confusion_matrix
@@ -21,7 +20,7 @@ META_PATH = "../models/xgb_weighted_metadata.json"
 # Load Data
 # ----------------------------------------------------------------------
 print("Loading cleaned panel...")
-df = pd.read_csv(DATA_PATH)
+df = pd.read_csv(DATA_PATH, parse_dates=["date"])
 
 # Feature set
 feature_cols = [
@@ -33,7 +32,9 @@ feature_cols = [
     "pct_41","pct_42","pct_43","pct_52","pct_71","pct_81","pct_82","pct_90","pct_95"
 ]
 
-target = "fire_today"
+# Predict next-day ignition (see docs/leakage_audit.md #1) — fire_today
+# (same-day) is no longer the target.
+target = "fire_tomorrow"
 
 # Remove missing rows
 before = len(df)
@@ -41,17 +42,21 @@ df = df.dropna(subset=feature_cols + [target])
 print(f"Rows before: {before}, after dropping NaN: {len(df)}")
 
 # ----------------------------------------------------------------------
-# Train / Validation Split
+# Train / Validation Split — time-based, not random (docs/leakage_audit.md
+# #4). A random row split lets adjacent-day rows from the same grid_id
+# leak across train/val via autocorrelated weather/NDVI and the (now-fixed
+# but still autocorrelated) fire-history features. This panel only covers
+# one month (2023-07) rather than the project's full 2020-2022 train /
+# 2023 test range, so the closest available fix is a chronological split:
+# the last 20% of dates become validation, everything earlier is training.
 # ----------------------------------------------------------------------
-X = df[feature_cols]
-y = df[target]
-
-X_train, X_val, y_train, y_val = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
-)
+df = df.sort_values("date")
+split_date = df["date"].quantile(0.8, interpolation="lower")
+train_mask = df["date"] <= split_date
+X_train, y_train = df.loc[train_mask, feature_cols], df.loc[train_mask, target]
+X_val, y_val = df.loc[~train_mask, feature_cols], df.loc[~train_mask, target]
+print(f"Train dates: {df.loc[train_mask,'date'].min().date()}..{df.loc[train_mask,'date'].max().date()} | "
+      f"Val dates: {df.loc[~train_mask,'date'].min().date()}..{df.loc[~train_mask,'date'].max().date()}")
 
 print(f"Training rows: {len(X_train)} | Validation rows: {len(X_val)}")
 print(f"Fire cases in train: {y_train.sum()} | Fire cases in val: {y_val.sum()}")

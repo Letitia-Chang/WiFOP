@@ -8,6 +8,12 @@ a committed full 2020–2023 version. The issues below are structural (same auth
 same logic would apply to the full run) but should be re-checked once the
 full-scale script is located/rebuilt.
 
+**Status (2026-11-23): all 4 issues fixed in `clean_panel.py` and the two
+training scripts**, verified with synthetic data (the real NASA/NDVI/IRWIN
+interim files aren't in this repo — see inventory.md — so this couldn't be
+re-run against the actual July 2023 numbers). See each section below for
+what changed.
+
 ## 1. Label/feature time alignment — the core "next-day" problem
 
 **File:** [`src/combine_data.py:79-118`](../src/combine_data.py)
@@ -26,6 +32,11 @@ all *features* forward one day (lag-1) so only information available at the end
 of day *t* is used to predict day *t*. Either way, the "fire count in a cell over
 the last 7/14 days" features described in the project brief should exclude the
 current day.
+
+**Done — option (a).** `clean_panel.py` now builds `fire_tomorrow` via
+`groupby("grid_id")["fire_today"].shift(-1)` and drops the (NaN) last date per
+cell. `train_xgboost_weighted.py` / `train_xgboost_smote.py` train on
+`fire_tomorrow` instead of `fire_today`.
 
 ## 2. Fire-history features leak the same-day label into themselves
 
@@ -59,6 +70,13 @@ the NASA POWER pulls) has its own humidity seasonality distinct from
 daily fire-weather risk — worth checking with a lagged-weather plot once the
 pipeline is fixed.
 
+**Done.** `fires_last_7d`/`fires_last_14d` in `clean_panel.py` now use
+`s.shift(1).rolling(window).sum()`. Same fix applied to `ndvi_7d_mean`, which
+had the identical inclusivity issue (not just the separate future-leakage issue
+in #3 below) — it's now `s.shift(1).rolling(7).mean()`. The SHAP re-run and
+lagged-weather check are still open — they need the real data, not just the
+synthetic data used to verify the code runs.
+
 ## 3. NDVI interpolation uses future data to fill the past
 
 **File:** [`src/clean_panel.py:44-49`](../src/clean_panel.py)
@@ -84,6 +102,12 @@ point) or forward-fill only (`.ffill()`), never `.bfill()`, for any feature mean
 to be "known as of day t." If a grid cell's very first NDVI reading is missing,
 drop those leading rows rather than back-filling from the future.
 
+**Done.** `clean_panel.py` now does
+`x.interpolate("linear", limit_direction="forward").ffill()` with no `.bfill()`.
+Verified on a synthetic series: leading NaNs before a cell's first reading stay
+NaN (and get dropped by the existing NASA-missing filter) instead of being
+filled from a future value; interior gaps still interpolate correctly.
+
 ## 4. Validation split is random, not time- or space-based
 
 **File:** [`src/train_xgboost_weighted.py:49-54`](../src/train_xgboost_weighted.py)
@@ -107,6 +131,15 @@ rework plan (item 3: spatial block CV) already anticipates this is also a
 problem at the full-dataset scale, because fires cluster geographically
 (Southern California, wildland-urban interface) and a date-only split still lets
 geographically-adjacent cells leak across train/test.
+
+**Done, partially.** Both training scripts now sort by `date` and split
+chronologically (last 20% of dates → validation) instead of a random/stratified
+row split. Since this panel only covers one month (2023-07), this is the closest
+available fix to the brief's real plan (train 2020–2022 / test 2023) — that
+proper year-based split still needs to happen once the full-scale
+`combine_data.py`/`clean_panel.py` run exists. **Spatial block CV (adjacent
+cells still leaking across the time split) is still open** — not addressed
+here.
 
 ## Priority fix order
 

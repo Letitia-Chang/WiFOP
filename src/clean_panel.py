@@ -4,9 +4,13 @@ clean_panel.py
 Prepares the training-ready wildfire panel:
 - Loads the July 2023 raw panel
 - Filters grid cells with NASA + NLCD coverage
-- Interpolates NDVI (per grid)
-- Adds rolling window features (3d / 7d)
-- Adds fire history features
+- Interpolates NDVI (per grid), forward-only — no bfill (see docs/leakage_audit.md #3)
+- Adds rolling window features (3d / 7d) and fire-history features
+  (fires_last_7d/14d, ndvi_7d_mean), all shifted so the current day is
+  excluded from its own "last N days" window (docs/leakage_audit.md #2)
+- Builds the fire_tomorrow label by shifting fire_today back one day per
+  grid cell, so every feature (keyed to day t) predicts day t+1, matching
+  the "next-day ignition" project brief (docs/leakage_audit.md #1)
 - Outputs a clean ML-ready dataset
 """
 
@@ -44,8 +48,12 @@ print(f"Remaining rows: {df.shape[0]}")
 print("Interpolating NDVI per grid_id...")
 
 df = df.sort_values(["grid_id", "date"])
+# Forward-only: interpolate/ffill using past and same-day values only. No
+# bfill — that would leak a future satellite reading into an earlier day's
+# "known as of day t" feature. A cell whose first reading is missing stays
+# NaN here and is dropped in the final-cleaning step below.
 df["ndvi"] = df.groupby("grid_id")["ndvi"].transform(
-    lambda x: x.interpolate("linear").bfill().ffill()
+    lambda x: x.interpolate("linear", limit_direction="forward").ffill()
 )
 
 # ----------------------------------------------------------
@@ -65,8 +73,12 @@ add_rolling_feature(df, "RH2M",         3, "min",  "RH2M_3d_min")
 add_rolling_feature(df, "WS10M",        3, "max",  "WS10M_3d_max")
 add_rolling_feature(df, "PRECTOTCORR",  7, "sum",  "PRECTOT_7d_sum")
 
-# NDVI rolling
-add_rolling_feature(df, "ndvi",         7, "mean", "ndvi_7d_mean")
+# NDVI rolling — shift(1) first so the current day's own NDVI isn't counted
+# as part of its own "last N days" mean (same inclusivity issue as point 2
+# in the fire-history features below).
+df["ndvi_7d_mean"] = df.groupby("grid_id")["ndvi"].transform(
+    lambda s: s.shift(1).rolling(7).mean()
+)
 
 # ----------------------------------------------------------
 # 4. FIRE HISTORY FEATURES
@@ -74,14 +86,36 @@ add_rolling_feature(df, "ndvi",         7, "mean", "ndvi_7d_mean")
 
 print("Adding fire history features...")
 
-df["fires_last_7d"]  = df.groupby("grid_id")["fire_today"].transform(lambda s: s.rolling(7).sum())
-df["fires_last_14d"] = df.groupby("grid_id")["fire_today"].transform(lambda s: s.rolling(14).sum())
+# shift(1) before rolling: pandas' rolling() is inclusive of the current
+# row, so without the shift, fires_last_7d on day t would include
+# fire_today on day t itself — directly encoding the label into a
+# "historical" feature. Shifting first means "last 7 days" excludes today.
+df["fires_last_7d"]  = df.groupby("grid_id")["fire_today"].transform(lambda s: s.shift(1).rolling(7).sum())
+df["fires_last_14d"] = df.groupby("grid_id")["fire_today"].transform(lambda s: s.shift(1).rolling(14).sum())
 
 df["fires_last_7d"] = df["fires_last_7d"].fillna(0)
 df["fires_last_14d"] = df["fires_last_14d"].fillna(0)
 
 # ----------------------------------------------------------
-# 5. FINAL CLEANING
+# 5. LABEL: NEXT-DAY FIRE (fire_tomorrow)
+# ----------------------------------------------------------
+
+print("Building fire_tomorrow label...")
+
+# The project predicts next-day ignition, but fire_today/weather/NDVI/
+# fire-history features above are all keyed to the same date. Shifting
+# fire_today back one day per grid cell makes the label "did a fire start
+# the day AFTER this row's date" while every feature stays keyed to this
+# row's date — i.e. only information known by the end of day t predicts
+# day t+1. The last date per grid cell has no "tomorrow" to look up and is
+# dropped.
+df = df.sort_values(["grid_id", "date"])
+df["fire_tomorrow"] = df.groupby("grid_id")["fire_today"].shift(-1)
+df = df[df["fire_tomorrow"].notna()]
+df["fire_tomorrow"] = df["fire_tomorrow"].astype(int)
+
+# ----------------------------------------------------------
+# 6. FINAL CLEANING
 # ----------------------------------------------------------
 
 print("Final cleaning...")
