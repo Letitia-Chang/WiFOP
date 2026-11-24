@@ -14,8 +14,12 @@ in the class presentation were inflated by that bug; this repo fixes it, adds
 proper spatial/temporal validation, and adds operational evaluation (top-k
 recall, lift, calibration, SHAP) on top of the original modeling work.
 
-**Status:** in progress. See [`docs/inventory.md`](docs/inventory.md) for what
-was carried over from the two source repos and what's being rewritten.
+**Status:** leakage fixes + full 2020–2023 pipeline rewrite done and run
+end-to-end on real data; see [`docs/results.md`](docs/results.md) for
+metrics. Operational evaluation (top-k recall, lift, calibration, SHAP) and
+a like-for-like PR-AUC comparison against the original numbers are still
+open. See [`docs/inventory.md`](docs/inventory.md) for what was carried
+over from the two source repos and what's been rewritten.
 
 ## Credit
 
@@ -27,5 +31,5 @@ was carried over from the two source repos and what's being rewritten.
 - Modeling (XGBoost, random forest, CatBoost, SVM, MLP/CNN): joint work, see
   `docs/inventory.md` for per-script authorship.
 
-Full results table, reproduction steps, and figures to come once the pipeline
-rewrite (leakage fixes + spatial CV) is done.
+See [`docs/results.md`](docs/results.md) for the current results table.
+Reproduction steps and figures to come; operational evaluation is still open.

@@ -38,12 +38,24 @@ assert "latitude" in nasa and "longitude" in nasa, "NASA rename failed!"
 
 nasa["date"] = pd.to_datetime(nasa["date"])
 
-print("Assigning NASA grid IDs...")
-nasa = assign_grid_id(nasa, "latitude", "longitude")
-assert "grid_id" in nasa, "NASA grid_id assignment FAILED!"
+# NASA POWER's native grid is ~0.5 degrees (~55 km) — far coarser than the
+# 5 km project grid, so assign_grid_id (which snaps each NASA row onto its
+# single nearest of the 53k fine grid cells) would only ever populate the
+# handful of grid cells that happen to be nearest to one of the ~320 NASA
+# points, leaving >99% of grid cells with no weather at all. Instead, do
+# the join in the other direction: find each of the 53k grid cells'
+# nearest NASA station, then merge NASA's daily values onto the grid via
+# that station assignment.
+print("Assigning each grid cell to its nearest NASA station...")
+stations = nasa[["latitude", "longitude"]].drop_duplicates().reset_index(drop=True)
+stations["station_id"] = stations.index
+station_tree = BallTree(np.radians(stations[["latitude", "longitude"]].to_numpy()), metric="haversine")
+_, station_idx = station_tree.query(np.radians(grid[["lat", "lon"]].to_numpy()), k=1)
+grid["station_id"] = station_idx.flatten()
 
+nasa = nasa.merge(stations, on=["latitude", "longitude"], how="left")
 nasa = nasa.drop(columns=["latitude","longitude"])
-nasa_daily = nasa.groupby(["grid_id","date"], as_index=False).mean()
+nasa_daily = nasa.groupby(["station_id","date"], as_index=False).mean()
 
 # ============================================================
 # 2. NDVI
@@ -118,7 +130,9 @@ panel = pd.MultiIndex.from_product(
 
 print("\nMerging datasets...")
 panel["year"] = panel["date"].dt.year
-panel = panel.merge(nasa_daily, on=["grid_id","date"], how="left")
+panel = panel.merge(grid[["grid_id","station_id"]], on="grid_id", how="left")
+panel = panel.merge(nasa_daily, on=["station_id","date"], how="left")
+panel = panel.drop(columns=["station_id"])
 panel = panel.merge(ndvi_daily, on=["grid_id","date"], how="left")
 panel = panel.merge(fire_labels[["grid_id","date","fire_today"]], on=["grid_id","date"], how="left")
 panel = panel.merge(nlcd_grid, on=["grid_id","year"], how="left")

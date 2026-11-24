@@ -8,11 +8,12 @@ a committed full 2020–2023 version. The issues below are structural (same auth
 same logic would apply to the full run) but should be re-checked once the
 full-scale script is located/rebuilt.
 
-**Status (2026-11-23): all 4 issues fixed in `clean_panel.py` and the two
-training scripts**, verified with synthetic data (the real NASA/NDVI/IRWIN
-interim files aren't in this repo — see inventory.md — so this couldn't be
-re-run against the actual July 2023 numbers). See each section below for
-what changed.
+**Status (2026-11-23): all 4 issues fixed, and the full pipeline has now
+been run end-to-end on real data for the full 2020–2023 range** (not just
+synthetic data, and not just the July-2023 test panel) — see
+`docs/inventory.md` for how the real NASA POWER/IRWIN/NDVI/NLCD data was
+obtained and `docs/results.md` for the resulting model metrics. See each
+section below for what changed in the code.
 
 ## 1. Label/feature time alignment — the core "next-day" problem
 
@@ -132,14 +133,16 @@ problem at the full-dataset scale, because fires cluster geographically
 (Southern California, wildland-urban interface) and a date-only split still lets
 geographically-adjacent cells leak across train/test.
 
-**Done, partially.** Both training scripts now sort by `date` and split
-chronologically (last 20% of dates → validation) instead of a random/stratified
-row split. Since this panel only covers one month (2023-07), this is the closest
-available fix to the brief's real plan (train 2020–2022 / test 2023) — that
-proper year-based split still needs to happen once the full-scale
-`combine_data.py`/`clean_panel.py` run exists. **Spatial block CV (adjacent
-cells still leaking across the time split) is still open** — not addressed
-here.
+**Done.** Now that the full 2020–2023 pipeline exists and has been run on real
+data, both training scripts implement the brief's actual plan: test is the
+full held-out 2023 fire season, train is 2020–2022 (a true year-based split,
+not a within-month chronological cut). Within the 2020–2022 training pool,
+the validation set used for threshold tuning is a **spatial block split**
+(`clean_panel.py` tags every grid cell with a `block_id` from a coarse
+~0.5°/~55km lat/lon bin; 20% of distinct blocks become validation), so
+geographically adjacent cells no longer end up on both sides of train/val.
+See `docs/results.md` for the resulting metrics (2023 test ROC-AUC 0.93
+weighted / 0.90 SMOTE).
 
 ## Priority fix order
 
