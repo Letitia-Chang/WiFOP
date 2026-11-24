@@ -1,6 +1,7 @@
 {
     "spatial_val_roc_auc": 0.8367733628680034,
     "test_2023_roc_auc": 0.8769773710799839,
+    "test_2023_auc_pr": 0.012377417540674434,
     "best_threshold": 0.8000000000000025,
     "num_train_rows_downsampled": 206304,
     "num_val_rows": 1471686,

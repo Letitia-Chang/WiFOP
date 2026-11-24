@@ -24,7 +24,8 @@ from imblearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
-    classification_report, confusion_matrix, precision_recall_fscore_support, roc_auc_score
+    average_precision_score, classification_report, confusion_matrix,
+    precision_recall_fscore_support, roc_auc_score
 )
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
@@ -132,8 +133,9 @@ print(confusion_matrix(y_val, y_val_pred))
 
 test_scores = clf_pipeline.decision_function(X_test)
 test_auc = roc_auc_score(y_test, test_scores)
+test_pr_auc = average_precision_score(y_test, test_scores)
 y_test_pred = (test_scores >= best_t).astype(int)
-print(f"\n2023 held-out test ROC-AUC: {test_auc:.4f}")
+print(f"\n2023 held-out test ROC-AUC: {test_auc:.4f} | AUC-PR: {test_pr_auc:.4f}")
 print("2023 held-out test Classification Report:")
 print(classification_report(y_test, y_test_pred, digits=3))
 print("2023 held-out test Confusion Matrix:")
@@ -159,6 +161,7 @@ import json
 metadata = {
     "spatial_val_roc_auc": float(val_auc),
     "test_2023_roc_auc": float(test_auc),
+    "test_2023_auc_pr": float(test_pr_auc),
     "best_threshold": float(best_t),
     "num_train_rows_downsampled": int(len(y_train_sampled)),
     "num_val_rows": int(len(y_val)),

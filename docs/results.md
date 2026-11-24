@@ -65,11 +65,11 @@ for threshold tuning, and 2023 held out entirely as the test year.
 
 | Model | Train rows | Spatial-val ROC-AUC | **2023 test ROC-AUC** | 2023 test AUC-PR | 2023 test fire recall @ threshold |
 |---|---|---|---|---|---|
-| XGBoost, class-weighted (`train_xgboost_weighted.py`) | 6,000,709 | 0.909 | **0.928** | — | 0.233 (969/4,154 fires caught) |
-| XGBoost + SMOTE (`train_xgboost_smote.py`) | 11,981,770 (after SMOTE) | 0.885 | **0.904** | — | 0.158 (657/4,154 fires caught) |
+| XGBoost, class-weighted (`train_xgboost_weighted.py`) | 6,000,709 | 0.909 | **0.928** | 0.081 | 0.233 (969/4,154 fires caught) |
+| XGBoost + SMOTE (`train_xgboost_smote.py`) | 11,981,770 (after SMOTE) | 0.885 | **0.904** | 0.057 | 0.158 (657/4,154 fires caught) |
 | CatBoost (`train_catboost_wildfire.py`) | 6,000,709 | 0.911 | **0.927** | 0.084 | 0.246 (1,022/4,154 fires caught) |
 | Random Forest (`train_random_forest_wildfire.py`) | 6,000,709 | 0.902 | **0.924** | 0.063 | 0.261 (1,085/4,154 fires caught) |
-| Linear SVM + downsample + SMOTE (`svm_downsample_smote.py`) | 206,304 (downsampled 20:1 + SMOTE) | 0.837 | **0.877** | — | 0.322 (1,339/4,154 fires caught) |
+| Linear SVM + downsample + SMOTE (`svm_downsample_smote.py`) | 206,304 (downsampled 20:1 + SMOTE) | 0.837 | **0.877** | 0.012 | 0.322 (1,339/4,154 fires caught) |
 
 Fire base rate in the 2023 test year: 4,154 fires out of 2,522,200
 grid-cell-days (≈0.16%). Full metadata in `reports/metrics/*_2020-2023.json`
@@ -96,21 +96,53 @@ full-scale dataset** (`ca_5km_daily_panel_2020_2023_6_9.csv`, with lat/lon
 per row and full-name NLCD columns) — see each script's docstring for what
 was changed to run them against this rework's actual clean panel instead.
 
+## PR-AUC comparison against the original project's numbers
+
+The original project's best reported PR-AUC was **0.0851**
+(`reports/metrics/optuna_trial_log_v3.csv`, trial 16 — a hyperparameter
+search for `train_xgboost_weighted`, same-day `fire_today` target, on the
+July-2023-only local test panel, with the `fires_last_7d`/`14d` label-leak
+bug from `docs/leakage_audit.md` #2 still present). Its sibling
+`optuna_trial_log_v2.csv` tops out at 0.070. These are the numbers the
+leakage audit's "original results were inflated" claim refers to.
+
+| Model (this rework, real 2020-2023 data, `fire_tomorrow`) | 2023 test PR-AUC |
+|---|---|
+| Original project's best (leakage-inflated, `fire_today`, July 2023 only) | 0.0851 |
+| CatBoost | 0.084 |
+| XGBoost, class-weighted | 0.081 |
+| Random Forest | 0.063 |
+| XGBoost + SMOTE | 0.057 |
+| Linear SVM + downsample + SMOTE | 0.012 |
+
+**Reading this comparison:** CatBoost and the weighted XGBoost land within
+about 0.001-0.004 of the original's 0.0851 — on a *harder*, more honest
+problem. The comparison isn't apples-to-apples in the original's favor:
+this run predicts tomorrow's fire from today's information (`fire_tomorrow`)
+instead of today's fire from today's information (`fire_today`), evaluates
+on a full year the model never saw rather than a 20% random split of the
+same month it trained on, and the leaking `fires_last_7d`/`14d` feature
+that was very likely propping up the original number is gone. Matching
+the original's PR-AUC on a meaningfully harder task is a good sign for this
+rework, not a wash — the original 0.085 wasn't "the right answer with some
+noise removed," it was inflated by a bug, and the fact that fixing the bug
+and making the task strictly harder (next-day, held-out year, no spatial
+leakage) still lands in the same PR-AUC neighborhood suggests the
+underlying signal (weather + land cover + vegetation) is real and roughly
+this strong, not that the original number was an unreachable ceiling.
+
 **Reading these numbers:** a 0.93 ROC-AUC with only ~23% recall at the
 F1-optimal threshold is not a contradiction — this is an extremely
 imbalanced problem (fires are a tiny fraction of grid-cell-days), so ROC-AUC
 (which rewards ranking rare positives above the vast negative class) looks
 much better than precision/recall at any single operating threshold. The
-project's planned operational evaluation (top-k recall, lift curves,
-calibration — see README) is a more honest way to judge this than the
-classification report alone, and hasn't been done yet.
+operational evaluation below (top-k recall, lift curves, calibration) is a
+more honest way to judge this than the classification report alone.
 
-**These numbers are not directly comparable to the original project's
-reported 0.085-0.087 PR-AUC** — different metric (PR-AUC vs ROC-AUC here),
-different target (`fire_today` same-day vs `fire_tomorrow` next-day), and
-the leakage fixes removed a feature (`fires_last_7d`/`14d` without the
-label leak) that was very likely propping up the original numbers. A
-like-for-like PR-AUC comparison is still open.
+**ROC-AUC here isn't directly comparable to the original project's
+reported 0.085-0.087 figure, which was PR-AUC, not ROC-AUC** — see the
+PR-AUC comparison section below for the like-for-like version of this
+comparison.
 
 ## Operational evaluation
 
@@ -186,10 +218,8 @@ Full numbers: `reports/metrics/operational_eval_weighted.json`,
 
 ## Still open
 
-- CatBoost/random forest/SVM baselines — not re-run on this data yet, only
-  the two XGBoost scripts.
-- PR-AUC alongside ROC-AUC, for comparison with the original project's
-  reported metric.
+- The operational evaluation (top-k recall/lift/calibration/SHAP) above has
+  only been run for the two XGBoost models, not CatBoost/RF/SVM.
 - The grid-generation duplication and NDVI-pipeline duplication questions
   from `docs/inventory.md`'s open questions are unrelated to this run and
   still unresolved.
