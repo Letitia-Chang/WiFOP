@@ -34,9 +34,9 @@ Author column is from `git log -1 --format=%an -- <path>` in the team repo (blan
 | `src/ndvi_pipeline_processing/clean_ndvi.py` | team repo | NDVI cleaning helper | raw NDVI | cleaned NDVI | Diyang Pang | Yes, pending review |
 | `src/ndvi_pipeline_processing/ndvi_pipeline2.py` | team repo | Second NDVI pipeline variant | raw NDVI | `ndvi.csv` variant | Diyang Pang | Check which NDVI pipeline is canonical |
 | `src/ndvi_pipeline_processing/setting.json`, `src/setting.json` | team repo | Config (paths/params) for NDVI pipeline | — | — | Diyang Pang | Yes, as config |
-| `src/SRTM_NLCD/2023_NLCD.py` | team repo | NLCD land-cover fraction extraction per grid cell | NLCD raster | `nlcd.csv` | Yini Li | Yes |
+| `src/SRTM_NLCD/nlcd_composition.py` (was `2023_NLCD.py`) | team repo, rewritten | NLCD land-cover fraction extraction per grid cell, now per year (2020-2023) from Annual NLCD | per-year NLCD raster tiles | `nlcd_1km_CA_composition_<year>.csv` | Yini Li (rewrite: Letitia) | Yes — done |
 | `src/SRTM_NLCD/slope_aspect.py` | team repo | SRTM-derived slope/aspect features | SRTM DEM | slope/aspect csv | Yini Li | Unused in final feature list (not in `feature_cols` of training scripts) — confirm before dropping |
-| `src/combine_data.py` | team repo | Joins NASA/NDVI/IRWIN/NLCD onto the grid×date panel; builds `fire_today` | `nasa.csv`, `ndvi.csv`, `irwin.csv`, `nlcd.csv`, grid | daily panel csv | Letitia | **Rewrite** — this is the July-2023-only local-test version (see leakage audit) |
+| `src/combine_data.py` | team repo, rewritten | Joins NASA/NDVI/IRWIN/NLCD onto the grid×date panel; builds `fire_today`. NLCD join is now by `(grid_id, year)` instead of a single static table | `nasa.csv`, `ndvi.csv`, `irwin.csv`, per-year `nlcd_1km_CA_composition_<year>.csv`, grid | daily panel csv | Letitia | **Still needs the rest of the rewrite** — this is the July-2023-only local-test version (see leakage audit); only the NLCD join has been updated so far |
 | `src/clean_panel.py` | team repo | Filters valid cells, interpolates NDVI, adds rolling weather + fire-history features | daily panel | training-ready panel | Letitia | **Rewrite** — contains the leakage issues below |
 
 ## Modeling scripts

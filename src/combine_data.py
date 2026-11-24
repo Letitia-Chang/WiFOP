@@ -82,18 +82,25 @@ fire_labels = (
 fire_labels["fire_today"] = (fire_labels["fire_count"] > 0).astype(int)
 
 # ============================================================
-# 4. NLCD
+# 4. NLCD (Annual NLCD — one land-cover composition per year, not a single
+#    static table, so pct_* features vary by year instead of being frozen)
 # ============================================================
 
-print("\n[6/10] Loading NLCD...")
-nlcd = pd.read_csv("../data/interim/nlcd.csv")
-assert "latitude" in nlcd and "longitude" in nlcd, "NLCD columns missing!"
+print("\n[6/10] Loading NLCD (per year)...")
+NLCD_YEARS = [2020, 2021, 2022, 2023]
+nlcd_parts = []
+for year in NLCD_YEARS:
+    part = pd.read_csv(f"../data/processed/nlcd_1km_CA_composition_{year}.csv")
+    assert "latitude" in part and "longitude" in part, f"NLCD {year} columns missing!"
+    assert "year" in part, f"NLCD {year} missing year column!"
+    nlcd_parts.append(part)
+nlcd = pd.concat(nlcd_parts, ignore_index=True)
 
 print("Assigning NLCD grid IDs...")
 nlcd = assign_grid_id(nlcd, "latitude", "longitude")
 nlcd = nlcd.drop(columns=["latitude","longitude"])
 
-nlcd_grid = nlcd.groupby("grid_id", as_index=False).mean()
+nlcd_grid = nlcd.groupby(["grid_id","year"], as_index=False).mean()
 
 # ============================================================
 # 5. Build daily panel
@@ -110,10 +117,12 @@ panel = pd.MultiIndex.from_product(
 # ============================================================
 
 print("\nMerging datasets...")
+panel["year"] = panel["date"].dt.year
 panel = panel.merge(nasa_daily, on=["grid_id","date"], how="left")
 panel = panel.merge(ndvi_daily, on=["grid_id","date"], how="left")
 panel = panel.merge(fire_labels[["grid_id","date","fire_today"]], on=["grid_id","date"], how="left")
-panel = panel.merge(nlcd_grid, on="grid_id", how="left")
+panel = panel.merge(nlcd_grid, on=["grid_id","year"], how="left")
+panel = panel.drop(columns=["year"])
 
 panel["fire_today"] = panel["fire_today"].fillna(0).astype(int)
 
