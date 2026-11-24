@@ -92,9 +92,80 @@ the leakage fixes removed a feature (`fires_last_7d`/`14d` without the
 label leak) that was very likely propping up the original numbers. A
 like-for-like PR-AUC comparison is still open.
 
+## Operational evaluation
+
+`src/evaluate_model.py` (2023 held-out test set, 2,522,200 rows, 4,154
+fires ≈ 0.16% base rate). This is the more honest way to judge this problem
+than a single classification report — ROC-AUC rewards ranking rare
+positives above the vast negative class, but the operational question is
+"if we can only act on the riskiest N% of grid-cell-days, how many fires
+does that actually catch?"
+
+### Top-k recall / lift
+
+| Top-k% flagged | Weighted — recall | Weighted — lift | SMOTE — recall | SMOTE — lift |
+|---|---|---|---|---|
+| 0.1% | 12.9% | 129x | 11.0% | 110x |
+| 0.5% | 27.1% | 54x | 18.2% | 36x |
+| 1.0% | 34.9% | 35x | 23.7% | 24x |
+| 2.0% | 44.2% | 22x | 33.0% | 17x |
+| 5.0% | 59.9% | 12x | 49.8% | 10x |
+| 10.0% | 75.1% | 7.5x | 66.9% | 6.7x |
+
+Flagging just the riskiest 10% of grid-cell-days catches **75%** of all
+fires with the weighted model (7.5x the base fire rate) — a far more
+useful number for an early-warning use case than the 23%/16% recall seen
+in the classification reports at the F1-optimal threshold. The **weighted
+model beats SMOTE at every single top-k level** — SMOTE's synthetic
+minority oversampling doesn't help the ranking here, it just shifts where
+the probability mass sits (see calibration below).
+Figures: `reports/figures/topk_lift_weighted.png`,
+`reports/figures/topk_lift_smote.png`.
+
+### Calibration
+
+| Model | Brier score |
+|---|---|
+| Weighted | 0.0696 |
+| SMOTE | 0.0264 |
+
+SMOTE's lower Brier score is misleading on its own — Brier score rewards
+predicting probabilities close to the (tiny) true base rate everywhere,
+which a model that's worse at *ranking* can still do if its probabilities
+are more conservative on average. Given SMOTE loses on every top-k
+recall/lift number above, the weighted model is the better choice for this
+use case despite its higher Brier score; calibration would matter more if
+the predicted probabilities were used directly (e.g. for cost-weighted
+decisions) rather than for ranking/thresholding.
+Figures: `reports/figures/calibration_weighted.png`,
+`reports/figures/calibration_smote.png`.
+
+### SHAP feature importance
+
+Both models agree on the top drivers, dominated by land-cover composition,
+not weather:
+
+| Rank | Weighted | SMOTE |
+|---|---|---|
+| 1 | `pct_21` (developed, open space) | `pct_21` (developed, open space) |
+| 2 | `PS` (surface pressure) | `PS` |
+| 3 | `ndvi_7d_mean` | `pct_22` (developed, low intensity) |
+| 4 | `pct_22` | `PRECTOTCORR` |
+| 5 | `pct_52` (shrub/scrub) | `pct_23` (developed, medium intensity) |
+
+`pct_21`/`pct_22`/`pct_23` (developed land at increasing intensity) ranking
+above raw weather variables is consistent with wildfire ignition being
+strongly tied to human activity/wildland-urban interface, not just fuel/fire
+weather — matches the original project's stated WUI hypothesis. Worth
+flagging as a direction to dig into further (e.g. ignition-cause breakdown
+if available) rather than treating as fully explained here.
+Figures: `reports/figures/shap_summary_weighted.png`,
+`reports/figures/shap_summary_smote.png`.
+Full numbers: `reports/metrics/operational_eval_weighted.json`,
+`reports/metrics/operational_eval_smote.json`.
+
 ## Still open
 
-- Operational evaluation (top-k recall, lift, calibration, SHAP) — not run.
 - CatBoost/random forest/SVM baselines — not re-run on this data yet, only
   the two XGBoost scripts.
 - PR-AUC alongside ROC-AUC, for comparison with the original project's
