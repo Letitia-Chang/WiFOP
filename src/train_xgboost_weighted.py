@@ -11,7 +11,7 @@ import joblib
 # ----------------------------------------------------------------------
 # Configuration
 # ----------------------------------------------------------------------
-DATA_PATH = "../data/processed/california_5km_training_panel_2023-07_clean.csv"
+DATA_PATH = "../data/processed/california_5km_training_panel_2020-2023_clean.csv"
 MODEL_PATH = "../models/xgb_weighted_model.pkl"
 THRESHOLD_PATH = "../models/xgb_weighted_threshold.json"
 META_PATH = "../models/xgb_weighted_metadata.json"
@@ -38,28 +38,41 @@ target = "fire_tomorrow"
 
 # Remove missing rows
 before = len(df)
-df = df.dropna(subset=feature_cols + [target])
+df = df.dropna(subset=feature_cols + [target, "block_id"])
 print(f"Rows before: {before}, after dropping NaN: {len(df)}")
 
 # ----------------------------------------------------------------------
-# Train / Validation Split — time-based, not random (docs/leakage_audit.md
-# #4). A random row split lets adjacent-day rows from the same grid_id
-# leak across train/val via autocorrelated weather/NDVI and the (now-fixed
-# but still autocorrelated) fire-history features. This panel only covers
-# one month (2023-07) rather than the project's full 2020-2022 train /
-# 2023 test range, so the closest available fix is a chronological split:
-# the last 20% of dates become validation, everything earlier is training.
+# Train / Test Split — year-based (docs/leakage_audit.md #4): test is the
+# full held-out 2023 fire season, train is 2020-2022, matching the
+# project brief. A random row split would let adjacent-day rows from the
+# same grid_id leak across train/test via autocorrelated weather/NDVI.
+#
+# Within the 2020-2022 training pool, the validation set used for
+# threshold tuning is a SPATIAL BLOCK split, not a random or date split:
+# fires cluster geographically, so a random/date split still lets two
+# adjacent grid cells end up on opposite sides. block_id (from
+# clean_panel.py) groups grid cells into ~55 km bins; 20% of blocks
+# (by distinct block_id, not by row count) become validation.
 # ----------------------------------------------------------------------
-df = df.sort_values("date")
-split_date = df["date"].quantile(0.8, interpolation="lower")
-train_mask = df["date"] <= split_date
-X_train, y_train = df.loc[train_mask, feature_cols], df.loc[train_mask, target]
-X_val, y_val = df.loc[~train_mask, feature_cols], df.loc[~train_mask, target]
-print(f"Train dates: {df.loc[train_mask,'date'].min().date()}..{df.loc[train_mask,'date'].max().date()} | "
-      f"Val dates: {df.loc[~train_mask,'date'].min().date()}..{df.loc[~train_mask,'date'].max().date()}")
+test_mask = df["date"].dt.year == 2023
+train_pool = df.loc[~test_mask]
+X_test, y_test = df.loc[test_mask, feature_cols], df.loc[test_mask, target]
 
-print(f"Training rows: {len(X_train)} | Validation rows: {len(X_val)}")
-print(f"Fire cases in train: {y_train.sum()} | Fire cases in val: {y_val.sum()}")
+rng = np.random.RandomState(42)
+blocks = train_pool["block_id"].unique()
+rng.shuffle(blocks)
+n_val_blocks = max(1, int(len(blocks) * 0.2))
+val_blocks = set(blocks[:n_val_blocks])
+val_mask = train_pool["block_id"].isin(val_blocks)
+
+X_train, y_train = train_pool.loc[~val_mask, feature_cols], train_pool.loc[~val_mask, target]
+X_val, y_val = train_pool.loc[val_mask, feature_cols], train_pool.loc[val_mask, target]
+
+print(f"Train rows: {len(X_train)} ({(~val_mask).sum()}) | Spatial-val rows: {len(X_val)} | "
+      f"2023 test rows: {len(X_test)}")
+print(f"Train blocks: {len(blocks) - n_val_blocks} | Val blocks: {n_val_blocks}")
+print(f"Fire cases in train: {y_train.sum()} | Fire cases in spatial-val: {y_val.sum()} | "
+      f"Fire cases in 2023 test: {y_test.sum()}")
 
 # ----------------------------------------------------------------------
 # Compute Class Weight
@@ -117,6 +130,20 @@ print("Confusion Matrix:")
 print(confusion_matrix(y_val, y_pred_best))
 
 # ----------------------------------------------------------------------
+# Final Evaluation — held-out 2023 test year (threshold/model selection
+# above never touched this data)
+# ----------------------------------------------------------------------
+y_test_proba = model.predict_proba(X_test)[:, 1]
+test_auc = roc_auc_score(y_test, y_test_proba)
+y_test_pred = (y_test_proba >= best_threshold).astype(int)
+
+print(f"\n2023 held-out test ROC-AUC: {test_auc:.4f}")
+print("2023 held-out test Classification Report:")
+print(classification_report(y_test, y_test_pred, digits=3))
+print("2023 held-out test Confusion Matrix:")
+print(confusion_matrix(y_test, y_test_pred))
+
+# ----------------------------------------------------------------------
 # Save Model + Threshold + Metadata
 # ----------------------------------------------------------------------
 joblib.dump(model, MODEL_PATH)
@@ -125,12 +152,15 @@ with open(THRESHOLD_PATH, "w") as f:
     json.dump({"threshold": best_threshold}, f)
 
 metadata = {
-    "roc_auc": float(auc),
+    "spatial_val_roc_auc": float(auc),
+    "test_2023_roc_auc": float(test_auc),
     "best_threshold": best_threshold,
     "num_train_rows": int(len(X_train)),
     "num_val_rows": int(len(X_val)),
+    "num_test_rows": int(len(X_test)),
     "train_fire_cases": int(y_train.sum()),
     "val_fire_cases": int(y_val.sum()),
+    "test_fire_cases": int(y_test.sum()),
     "features": feature_cols,
     "scale_pos_weight": float(scale)
 }

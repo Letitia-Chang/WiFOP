@@ -2,7 +2,8 @@
 clean_panel.py
 
 Prepares the training-ready wildfire panel:
-- Loads the July 2023 raw panel
+- Loads the 2020-2023 fire-season raw panel
+- Tags each grid_id with a spatial block id (for spatial-block CV downstream)
 - Filters grid cells with NASA + NLCD coverage
 - Interpolates NDVI (per grid), forward-only — no bfill (see docs/leakage_audit.md #3)
 - Adds rolling window features (3d / 7d) and fire-history features
@@ -17,11 +18,25 @@ Prepares the training-ready wildfire panel:
 import pandas as pd
 import numpy as np
 
-INPUT_FILE  = "../data/processed/california_5km_daily_panel_2023-07.csv"
-OUTPUT_FILE = "../data/processed/california_5km_training_panel_2023-07_clean.csv"
+INPUT_FILE  = "../data/processed/california_5km_daily_panel_2020-2023.csv"
+OUTPUT_FILE = "../data/processed/california_5km_training_panel_2020-2023_clean.csv"
+GRID_FILE   = "../data/california_grid_5km.csv"
+SPATIAL_BLOCK_DEG = 0.5  # ~55 km blocks, for spatial-block CV (see docs/leakage_audit.md #4)
 
 print("Loading panel...")
 df = pd.read_csv(INPUT_FILE, parse_dates=["date"])
+
+# Spatial block id: every grid_id in the same coarse lat/lon bin gets the
+# same block, so a later spatial-block split keeps a whole neighborhood on
+# one side of train/val instead of leaking adjacent cells across both
+# (point #4 in docs/leakage_audit.md — fires cluster geographically).
+grid = pd.read_csv(GRID_FILE)
+grid["block_id"] = (
+    (grid["centroid_lat"] // SPATIAL_BLOCK_DEG).astype(int).astype(str)
+    + "_"
+    + (grid["centroid_lon"] // SPATIAL_BLOCK_DEG).astype(int).astype(str)
+)
+df = df.merge(grid[["grid_id", "block_id"]], on="grid_id", how="left")
 
 # ----------------------------------------------------------
 # 1. FILTER VALID GRID CELLS (Option C: NASA + NLCD required)

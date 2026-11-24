@@ -53,7 +53,7 @@ print("\n[4/10] Loading NDVI...")
 ndvi = pd.read_csv("../data/interim/ndvi.csv")
 assert "latitude" in ndvi and "longitude" in ndvi, "NDVI rename failed!"
 
-ndvi["date"] = pd.to_datetime(ndvi["date"], format="%m/%d/%Y")
+ndvi["date"] = pd.to_datetime(ndvi["date"])
 
 print("Assigning NDVI grid IDs...")
 ndvi = assign_grid_id(ndvi, "latitude", "longitude")
@@ -74,7 +74,7 @@ print("Assigning IRWIN grid IDs...")
 irwin = assign_grid_id(irwin, "lat", "lon")
 assert "grid_id" in irwin, "IRWIN grid_id assignment FAILED!"
 
-irwin = irwin.drop(columns=["lat","lon","state","type","incident_id"])
+irwin = irwin.drop(columns=["lat","lon","incident_id"])
 
 fire_labels = (
     irwin.groupby(["grid_id","date"]).size().reset_index(name="fire_count")
@@ -131,7 +131,7 @@ panel["fire_today"] = panel["fire_today"].fillna(0).astype(int)
 # ============================================================
 
 print("\nSaving...")
-panel.to_csv("../data/processed/california_5km_daily_panel_2023-07.csv", index=False)
+panel.to_csv("../data/processed/california_5km_daily_panel_2020-2023.csv", index=False)
 
 print("\n🎉 DONE — merged panel built successfully!")
 print(panel.head())
