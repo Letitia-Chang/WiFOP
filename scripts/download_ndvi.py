@@ -1,7 +1,8 @@
 """
 download_ndvi.py
 
-Downloads NOAA VIIRS NDVI CDR (v001, JP113C1, NOAA-20) for California fire
+Downloads NOAA VIIRS NDVI CDR (v001; NPP13C1/S-NPP through 2022, JP113C1/
+NOAA-20 from 2023 — the source satellite changed mid-series) for California fire
 season (Jun-Sep) 2020-2023, clipped to the CA bounding box, and writes one
 tidy CSV to data/interim/ndvi.csv (date, longitude, latitude, ndvi) — the
 input src/combine_data.py expects.
@@ -36,7 +37,9 @@ INDEX_URL_TMPL = (
     "https://www.ncei.noaa.gov/data/"
     "land-normalized-difference-vegetation-index/access/{year}/"
 )
-VIIRS_PATTERN = re.compile(r"VIIRS-Land_v001_JP113C1_NOAA-20_(\d{8})_[^\"']*\.nc")
+# Product/satellite naming changed mid-series: 2020-2022 granules are
+# NPP13C1_S-NPP, 2023+ are JP113C1_NOAA-20. Same NDVI variable/scale either way.
+VIIRS_PATTERN = re.compile(r"VIIRS-Land_v001_(?:JP113C1_NOAA-20|NPP13C1_S-NPP)_(\d{8})_[^\"']*\.nc")
 
 CA_BBOX_LONLAT = (-124.48, 32.53, -114.13, 42.01)  # lon_min, lat_min, lon_max, lat_max
 SEASON_START_MD, SEASON_END_MD = (6, 1), (9, 30)  # Jun-Sep, matches NASA POWER season scope
