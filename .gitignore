@@ -6,6 +6,7 @@ data/
 # Model binaries
 models/*.pkl
 models/*.joblib
+models/*.cbm
 *.pkl
 *.h5
 *.pt

@@ -1,268 +1,152 @@
-import pandas as pd
-import numpy as np
-from sklearn.metrics import (
-    roc_auc_score, precision_recall_curve,
-    classification_report, confusion_matrix, average_precision_score
-)
-from sklearn.neighbors import BallTree
-from catboost import CatBoostClassifier
+"""
+train_catboost_wildfire.py
+
+CatBoost baseline for fire_tomorrow, on the real 2020-2023 clean panel
+(src/clean_panel.py output) — rewritten from the original version, which
+assumed a different, never-recovered full-scale dataset
+(ca_5km_daily_panel_2020_2023_6_9.csv) that isn't part of this rework.
+
+Simplification vs. the original: the original computed hand-rolled
+8-nearest-neighbor and 10km-radius spatial smoothing features via a
+per-date Python loop over every grid cell, which doesn't scale to this
+panel's ~26k cells x ~488 dates. Those are left out here — this is a
+baseline comparison against XGBoost, not a reproduction of every feature
+the original explored. Kept the original's nonlinear feature engineering
+and class-weighting approach; uses the same year-based test split +
+spatial-block validation split as the XGBoost scripts
+(docs/leakage_audit.md #4), instead of the original's naive date cutoff
+(which didn't account for geographic clustering).
+"""
+
 import json
-import joblib
+from pathlib import Path
 
-# ----------------------------------------------------------------------
-# Configuration
-# ----------------------------------------------------------------------
-DATA_PATH = "../data/COMBINE_WIFOP_DATASET/data/processed/ca_5km_daily_panel_2020_2023_6_9.csv"
-MODEL_PATH = "../models/2020_2023/catboost_model.cbm"
-THRESHOLD_PATH = "../models/2020_2023/catboost_threshold.json"
-META_PATH = "../models/2020_2023/catboost_metadata.json"
+import numpy as np
+import pandas as pd
+from catboost import CatBoostClassifier
+from sklearn.metrics import (
+    roc_auc_score, average_precision_score,
+    precision_recall_curve, classification_report, confusion_matrix
+)
 
-# ----------------------------------------------------------------------
-# Load Data
-# ----------------------------------------------------------------------
-print("Loading combined panel...")
-df = pd.read_csv(DATA_PATH, low_memory=False)
+DATA_PATH = "../data/processed/california_5km_training_panel_2020-2023_clean.csv"
+MODEL_PATH = "../models/catboost_model.cbm"
+THRESHOLD_PATH = "../reports/metrics/catboost_threshold_2020-2023.json"
+META_PATH = "../reports/metrics/catboost_metadata_2020-2023.json"
 
-df["date"] = pd.to_datetime(df["date"])
-df["grid_id"] = df["grid_id"].astype("category")
+BASE_FEATURES = [
+    "PRECTOTCORR", "PS", "RH2M", "T2M", "WS10M",
+    "PRECTOT_7d_sum", "T2M_3d_mean", "RH2M_3d_min", "WS10M_3d_max",
+    "ndvi", "ndvi_7d_mean",
+    "fires_last_7d", "fires_last_14d",
+    "pct_11","pct_12","pct_21","pct_22","pct_23","pct_24","pct_31",
+    "pct_41","pct_42","pct_43","pct_52","pct_71","pct_81","pct_82","pct_90","pct_95"
+]
+NONLINEAR_FEATURES = ["vpd_proxy", "hot_windy", "dry_windy", "fuel_moisture_proxy"]
+FEATURE_COLS = BASE_FEATURES + NONLINEAR_FEATURES
+TARGET = "fire_tomorrow"
 
-target = "fire_today"
+print("Loading cleaned panel...")
+df = pd.read_csv(DATA_PATH, parse_dates=["date"])
 
-# ----------------------------------------------------------------------
-# Build BallTree for spatial operations
-# ----------------------------------------------------------------------
-print("Building BallTree for spatial neighbors...")
-
-grid_meta = df[["grid_id", "lat", "lon"]].drop_duplicates().reset_index(drop=True)
-coords_rad = np.radians(grid_meta[["lat", "lon"]].values)
-
-tree = BallTree(coords_rad, metric="haversine")
-
-# ----------------------------------------------------------------------
-# 8-Nearest Neighbors (local fire propagation)
-# ----------------------------------------------------------------------
-print("Computing 8-nearest neighbors...")
-
-K = 8 + 1   # +1 to include itself
-dist_nn, idx_nn = tree.query(coords_rad, k=K)
-
-# Map: grid_id → list of neighbor grid_ids
-neighbor_map = {}
-for i, g in enumerate(grid_meta["grid_id"]):
-    neighbor_ids = grid_meta.iloc[idx_nn[i]]["grid_id"].tolist()
-    neighbor_ids = [n for n in neighbor_ids if n != g]  # remove itself
-    neighbor_map[g] = neighbor_ids
-
-# ----------------------------------------------------------------------
-# Compute neighbor fire lag features
-# ----------------------------------------------------------------------
-print("Computing neighbor fire lag features...")
-
-def add_neighbor_lag(df, lag_col):
-    out_col = "neighbor_" + lag_col
-    df[out_col] = 0
-
-    for date, group in df.groupby("date"):
-        # fast lookup table: grid_id -> lag value
-        lag_map = dict(zip(group["grid_id"], group[lag_col]))
-
-        values = []
-        for gid in group["grid_id"]:
-            neigh = neighbor_map[gid]
-            total = sum(lag_map.get(n, 0) for n in neigh)
-            values.append(total)
-
-        df.loc[group.index, out_col] = values
-
-
-lag_features = ["fires_last_1d", "fires_last_3d", "fires_last_7d", "fires_last_14d"]
-for lf in lag_features:
-    add_neighbor_lag(df, lf)
-
-# ----------------------------------------------------------------------
-# Radius-Based (≤ 10 km) Spatial Smoothing
-# ----------------------------------------------------------------------
-print("Computing radius-based smoothing features (10 km)...")
-
-radius_km = 10
-radius_rad = radius_km / 6371.0  # Earth radius
-
-# Query radius for all grid points
-radius_neighbors = tree.query_radius(coords_rad, r=radius_rad)
-
-# Smoothing function
-def add_radius_mean(df, col, new_col):
-    df[new_col] = 0
-    for date, group in df.groupby("date"):
-        # Build lookup for fast access
-        value_map = dict(zip(group["grid_id"], group[col]))
-
-        results = []
-        for i, gid in enumerate(group["grid_id"]):
-            neigh_idx = radius_neighbors[grid_meta.index[grid_meta["grid_id"] == gid][0]]
-            neigh_ids = grid_meta.iloc[neigh_idx]["grid_id"]
-
-            vals = [value_map.get(n, np.nan) for n in neigh_ids]
-            results.append(np.nanmean(vals))
-
-        df.loc[group.index, new_col] = results
-
-
-radius_cols = {
-    "T2M": "T2M_spatial_mean_10km",
-    "RH2M": "RH2M_spatial_mean_10km",
-    "WS10M": "WS10M_spatial_mean_10km",
-    "ndvi": "ndvi_spatial_mean_10km"
-}
-
-# Add VPD proxy smoothing too
+print("Engineering nonlinear interaction features...")
 df["vpd_proxy"] = (1 - df["RH2M"] / 100) * df["T2M"]
-radius_cols["vpd_proxy"] = "vpd_spatial_mean_10km"
-
-for base, newname in radius_cols.items():
-    add_radius_mean(df, base, newname)
-
-# ----------------------------------------------------------------------
-# Nonlinear Feature Engineering
-# ----------------------------------------------------------------------
-print("Engineering nonlinear features...")
-
 df["hot_windy"] = df["T2M"] * df["WS10M"]
 df["dry_windy"] = (100 - df["RH2M"]) * df["WS10M"]
 df["fuel_moisture_proxy"] = df["ndvi"] * df["RH2M"]
 
-optional_lags = ["fires_last_1d", "fires_last_3d"]
-available_lags = [c for c in optional_lags if c in df.columns]
+before = len(df)
+df = df.dropna(subset=FEATURE_COLS + [TARGET, "block_id"])
+print(f"Rows before: {before}, after dropping NaN: {len(df)}")
 
-# Auto-detect NLCD columns
-nlcd_cols = [c for c in df.columns if c.startswith("pct_")]
+test_mask = df["date"].dt.year == 2023
+train_pool = df.loc[~test_mask]
+X_test, y_test = df.loc[test_mask, FEATURE_COLS], df.loc[test_mask, TARGET]
 
-# ----------------------------------------------------------------------
-# Final Feature List
-# ----------------------------------------------------------------------
-feature_cols = [
-    # Weather
-    "T2M", "RH2M", "WS10M", "PS", "PRECTOTCORR",
-    "T2M_3d_mean", "RH2M_3d_min", "WS10M_3d_max", "PRECTOT_7d_sum",
+rng = np.random.RandomState(42)
+blocks = train_pool["block_id"].unique()
+rng.shuffle(blocks)
+n_val_blocks = max(1, int(len(blocks) * 0.2))
+val_blocks = set(blocks[:n_val_blocks])
+val_mask = train_pool["block_id"].isin(val_blocks)
 
-    # Vegetation
-    "ndvi", "ndvi_7d_mean",
+X_train, y_train = train_pool.loc[~val_mask, FEATURE_COLS], train_pool.loc[~val_mask, TARGET]
+X_val, y_val = train_pool.loc[val_mask, FEATURE_COLS], train_pool.loc[val_mask, TARGET]
 
-    # Fires
-    "fires_last_7d", "fires_last_14d"
-] + available_lags + nlcd_cols + [
+print(f"Train rows: {len(X_train)} | Spatial-val rows: {len(X_val)} | 2023 test rows: {len(X_test)}")
+print(f"Fire cases in train: {y_train.sum()} | spatial-val: {y_val.sum()} | 2023 test: {y_test.sum()}")
 
-    # Nonlinear
-    "vpd_proxy", "hot_windy", "dry_windy", "fuel_moisture_proxy",
-
-    # Neighbor fire features
-    "neighbor_fires_last_1d",
-    "neighbor_fires_last_3d",
-    "neighbor_fires_last_7d",
-    "neighbor_fires_last_14d",
-
-    # Radius-smoothed features
-    "T2M_spatial_mean_10km",
-    "RH2M_spatial_mean_10km",
-    "WS10M_spatial_mean_10km",
-    "ndvi_spatial_mean_10km",
-    "vpd_spatial_mean_10km"
-]
-
-print(f"Using {len(feature_cols)} total features.")
-
-# ----------------------------------------------------------------------
-# Train / Validation Split (time-based)
-# ----------------------------------------------------------------------
-train = df[df["date"] < "2023-01-01"]
-val   = df[df["date"] >= "2023-01-01"]
-
-X_train = train[feature_cols]
-y_train = train[target]
-
-X_val = val[feature_cols]
-y_val = val[target]
-
-# ----------------------------------------------------------------------
-# Class Weight for Imbalance
-# ----------------------------------------------------------------------
 neg = (y_train == 0).sum()
 pos = (y_train == 1).sum()
 scale = neg / max(pos, 1)
-
 print(f"Using class_weight = {scale:.2f}")
 
-# ----------------------------------------------------------------------
-# Train CatBoost Model
-# ----------------------------------------------------------------------
 model = CatBoostClassifier(
     loss_function="Logloss",
     eval_metric="AUC",
     learning_rate=0.05,
-    depth=10,
-    iterations=1500,
+    depth=8,
+    iterations=800,
     l2_leaf_reg=3,
     random_state=42,
     thread_count=-1,
     class_weights=[1, scale],
-    verbose=200
+    verbose=200,
 )
 
-print("Training CatBoost model (with spatial features)...")
+print("Training CatBoost model...")
 model.fit(X_train, y_train, eval_set=(X_val, y_val))
 
-
-# ----------------------------------------------------------------------
-# Evaluate Model
-# ----------------------------------------------------------------------
 y_val_proba = model.predict_proba(X_val)[:, 1]
-
-auc_roc = roc_auc_score(y_val, y_val_proba)
+roc_auc = roc_auc_score(y_val, y_val_proba)
 auc_pr = average_precision_score(y_val, y_val_proba)
+print(f"\nSpatial-val ROC-AUC: {roc_auc:.4f} | AUC-PR: {auc_pr:.4f}")
 
-print(f"\nROC-AUC: {auc_roc:.4f}")
-print(f"AUC-PR:  {auc_pr:.4f}")
-
-# ----------------------------------------------------------------------
-# Optimal Threshold (Max F1)
-# ----------------------------------------------------------------------
 precisions, recalls, thresholds = precision_recall_curve(y_val, y_val_proba)
 f1_scores = 2 * (precisions * recalls) / (precisions + recalls + 1e-9)
-
 best_idx = np.argmax(f1_scores)
 best_threshold = float(thresholds[best_idx])
-
-print(f"\nOptimal threshold (max F1): {best_threshold:.4f}")
+print(f"Optimal threshold (max F1): {best_threshold:.4f}")
 
 y_pred_best = (y_val_proba >= best_threshold).astype(int)
-
-print("\nClassification Report:")
+print("\nSpatial-val Classification Report:")
 print(classification_report(y_val, y_pred_best, digits=3))
-
 print("Confusion Matrix:")
 print(confusion_matrix(y_val, y_pred_best))
 
-# ----------------------------------------------------------------------
-# Save Model + Threshold + Metadata
-# ----------------------------------------------------------------------
+y_test_proba = model.predict_proba(X_test)[:, 1]
+test_auc = roc_auc_score(y_test, y_test_proba)
+test_auc_pr = average_precision_score(y_test, y_test_proba)
+y_test_pred = (y_test_proba >= best_threshold).astype(int)
+
+print(f"\n2023 held-out test ROC-AUC: {test_auc:.4f} | AUC-PR: {test_auc_pr:.4f}")
+print("2023 held-out test Classification Report:")
+print(classification_report(y_test, y_test_pred, digits=3))
+print("2023 held-out test Confusion Matrix:")
+print(confusion_matrix(y_test, y_test_pred))
+
+Path("../models").mkdir(parents=True, exist_ok=True)
 model.save_model(MODEL_PATH)
 
 with open(THRESHOLD_PATH, "w") as f:
     json.dump({"threshold": best_threshold}, f)
 
 metadata = {
-    "roc_auc": float(auc_roc),
-    "auc_pr": float(auc_pr),
+    "spatial_val_roc_auc": float(roc_auc),
+    "spatial_val_auc_pr": float(auc_pr),
+    "test_2023_roc_auc": float(test_auc),
+    "test_2023_auc_pr": float(test_auc_pr),
     "best_threshold": best_threshold,
     "num_train_rows": int(len(X_train)),
     "num_val_rows": int(len(X_val)),
+    "num_test_rows": int(len(X_test)),
     "train_fire_cases": int(y_train.sum()),
     "val_fire_cases": int(y_val.sum()),
-    "features": feature_cols,
-    "class_weight": float(scale)
+    "test_fire_cases": int(y_test.sum()),
+    "features": FEATURE_COLS,
+    "class_weight": float(scale),
 }
-
 with open(META_PATH, "w") as f:
     json.dump(metadata, f, indent=4)
 
-print("\nModel, threshold, and metadata saved successfully.")
+print("\nCatBoost model, threshold, and metadata saved successfully.")

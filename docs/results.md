@@ -63,18 +63,38 @@ Both models predict `fire_tomorrow` (next-day ignition), trained on
 2020-2022, with a spatial-block validation split (20% of ~55km blocks) used
 for threshold tuning, and 2023 held out entirely as the test year.
 
-| Model | Train rows | Spatial-val ROC-AUC | **2023 test ROC-AUC** | 2023 test fire recall @ threshold |
-|---|---|---|---|---|
-| XGBoost, class-weighted (`train_xgboost_weighted.py`) | 6,000,709 | 0.909 | **0.928** | 0.233 (969/4,154 fires caught) |
-| XGBoost + SMOTE (`train_xgboost_smote.py`) | 11,981,770 (after SMOTE) | 0.885 | **0.904** | 0.158 (657/4,154 fires caught) |
+| Model | Train rows | Spatial-val ROC-AUC | **2023 test ROC-AUC** | 2023 test AUC-PR | 2023 test fire recall @ threshold |
+|---|---|---|---|---|---|
+| XGBoost, class-weighted (`train_xgboost_weighted.py`) | 6,000,709 | 0.909 | **0.928** | — | 0.233 (969/4,154 fires caught) |
+| XGBoost + SMOTE (`train_xgboost_smote.py`) | 11,981,770 (after SMOTE) | 0.885 | **0.904** | — | 0.158 (657/4,154 fires caught) |
+| CatBoost (`train_catboost_wildfire.py`) | 6,000,709 | 0.911 | **0.927** | 0.084 | 0.246 (1,022/4,154 fires caught) |
+| Random Forest (`train_random_forest_wildfire.py`) | 6,000,709 | 0.902 | **0.924** | 0.063 | 0.261 (1,085/4,154 fires caught) |
+| Linear SVM + downsample + SMOTE (`svm_downsample_smote.py`) | 206,304 (downsampled 20:1 + SMOTE) | 0.837 | **0.877** | — | 0.322 (1,339/4,154 fires caught) |
 
 Fire base rate in the 2023 test year: 4,154 fires out of 2,522,200
-grid-cell-days (≈0.16%). Full metadata:
-`reports/metrics/xgb_weighted_metadata_2020-2023.json`,
-`reports/metrics/xgb_smote_metadata_2020-2023.json` (named `_2020-2023` to
-keep the original July-2023-only run's metadata files, which document the
-leakage-inflated results that motivated this rework, intact alongside
-them).
+grid-cell-days (≈0.16%). Full metadata in `reports/metrics/*_2020-2023.json`
+per model (named `_2020-2023` to keep the original July-2023-only run's
+metadata files, which document the leakage-inflated results that motivated
+this rework, intact alongside them).
+
+**All 5 models land in the same 0.88-0.93 ROC-AUC range** — the gap between
+boosted trees (XGBoost/CatBoost, ~0.92-0.93) and Random Forest (0.924) is
+small, and the linear SVM is the clear laggard (0.877), consistent with
+this being a problem with real nonlinear structure (land-cover thresholds,
+interaction effects) that a linear decision boundary can't fully capture.
+CatBoost edges out XGBoost-weighted slightly on both ROC-AUC and AUC-PR
+without any of the original script's hand-engineered spatial neighbor
+features (which weren't reproduced here — see `train_catboost_wildfire.py`'s
+docstring). The SVM's much higher recall-at-threshold (32%) is a side effect
+of its heavy downsampling + SMOTE + F1-tuned threshold, not evidence it's
+actually better operationally — its AUC-PR/precision at that recall level
+would need checking (not computed here) before reading too much into it.
+
+The **original train_random_forest_wildfire.py / train_catboost_wildfire.py
+/ svm_downsample_smote.py all assumed a different, never-recovered
+full-scale dataset** (`ca_5km_daily_panel_2020_2023_6_9.csv`, with lat/lon
+per row and full-name NLCD columns) — see each script's docstring for what
+was changed to run them against this rework's actual clean panel instead.
 
 **Reading these numbers:** a 0.93 ROC-AUC with only ~23% recall at the
 F1-optimal threshold is not a contradiction — this is an extremely
