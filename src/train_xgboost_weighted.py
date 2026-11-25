@@ -8,10 +8,11 @@ from xgboost import XGBClassifier
 import json
 import joblib
 
+from features import BASE_FEATURES as feature_cols, DATA_PATH, TARGET as target
+
 # ----------------------------------------------------------------------
 # Configuration
 # ----------------------------------------------------------------------
-DATA_PATH = "../data/processed/california_5km_training_panel_2020-2023_clean.csv"
 MODEL_PATH = "../models/xgb_weighted_model.pkl"
 THRESHOLD_PATH = "../models/xgb_weighted_threshold.json"
 META_PATH = "../models/xgb_weighted_metadata.json"
@@ -22,19 +23,8 @@ META_PATH = "../models/xgb_weighted_metadata.json"
 print("Loading cleaned panel...")
 df = pd.read_csv(DATA_PATH, parse_dates=["date"])
 
-# Feature set
-feature_cols = [
-    "PRECTOTCORR", "PS", "RH2M", "T2M", "WS10M",
-    "PRECTOT_7d_sum", "T2M_3d_mean", "RH2M_3d_min", "WS10M_3d_max",
-    "ndvi", "ndvi_7d_mean",
-    "fires_last_7d", "fires_last_14d",
-    "pct_11","pct_12","pct_21","pct_22","pct_23","pct_24","pct_31",
-    "pct_41","pct_42","pct_43","pct_52","pct_71","pct_81","pct_82","pct_90","pct_95"
-]
-
-# Predict next-day ignition (see docs/leakage_audit.md #1) — fire_today
-# (same-day) is no longer the target.
-target = "fire_tomorrow"
+# Feature set, target: see features.py (predicting next-day ignition,
+# docs/leakage_audit.md #1 — fire_today same-day is no longer the target).
 
 # Remove missing rows
 before = len(df)

@@ -35,17 +35,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from xgboost import XGBClassifier
 
 from evaluate_model import DATA_PATH, FIG_DIR, TARGET, plot_lift_recall, top_k_table
-
-WEATHER_NDVI_FIRE_FEATURES = [
-    "PRECTOTCORR", "PS", "RH2M", "T2M", "WS10M",
-    "PRECTOT_7d_sum", "T2M_3d_mean", "RH2M_3d_min", "WS10M_3d_max",
-    "ndvi", "ndvi_7d_mean",
-    "fires_last_7d", "fires_last_14d",
-]
-LAND_COVER_FEATURES = [
-    "pct_11", "pct_12", "pct_21", "pct_22", "pct_23", "pct_24", "pct_31",
-    "pct_41", "pct_42", "pct_43", "pct_52", "pct_71", "pct_81", "pct_82", "pct_90", "pct_95",
-]
+from features import LAND_COVER_FEATURES, WEATHER_NDVI_FIRE_FEATURES
 
 FEATURE_SETS = {
     "full": WEATHER_NDVI_FIRE_FEATURES + LAND_COVER_FEATURES,

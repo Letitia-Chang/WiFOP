@@ -38,19 +38,9 @@ import shap
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
 
-DATA_PATH = "../data/processed/california_5km_training_panel_2020-2023_clean.csv"
-FIG_DIR = Path(__file__).resolve().parent.parent / "reports" / "figures"
+from features import BASE_FEATURES, DATA_PATH, NONLINEAR_FEATURES, TARGET, add_nonlinear_features
 
-BASE_FEATURES = [
-    "PRECTOTCORR", "PS", "RH2M", "T2M", "WS10M",
-    "PRECTOT_7d_sum", "T2M_3d_mean", "RH2M_3d_min", "WS10M_3d_max",
-    "ndvi", "ndvi_7d_mean",
-    "fires_last_7d", "fires_last_14d",
-    "pct_11","pct_12","pct_21","pct_22","pct_23","pct_24","pct_31",
-    "pct_41","pct_42","pct_43","pct_52","pct_71","pct_81","pct_82","pct_90","pct_95"
-]
-NONLINEAR_FEATURES = ["vpd_proxy", "hot_windy", "dry_windy", "fuel_moisture_proxy"]
-TARGET = "fire_tomorrow"
+FIG_DIR = Path(__file__).resolve().parent.parent / "reports" / "figures"
 
 MODELS = {
     "weighted": {
@@ -91,10 +81,7 @@ def load_test_set(feature_cols):
     df = pd.read_csv(DATA_PATH, parse_dates=["date"])
 
     if set(NONLINEAR_FEATURES) & set(feature_cols):
-        df["vpd_proxy"] = (1 - df["RH2M"] / 100) * df["T2M"]
-        df["hot_windy"] = df["T2M"] * df["WS10M"]
-        df["dry_windy"] = (100 - df["RH2M"]) * df["WS10M"]
-        df["fuel_moisture_proxy"] = df["ndvi"] * df["RH2M"]
+        add_nonlinear_features(df)
 
     df = df.dropna(subset=feature_cols + [TARGET, "block_id"])
     test_mask = df["date"].dt.year == 2023
