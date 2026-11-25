@@ -1,5 +1,7 @@
 # WiFOP — Wildfire Outbreak Prediction (rework in progress)
 
+[![Tests](https://github.com/Letitia-Chang/WiFOP/actions/workflows/tests.yml/badge.svg)](https://github.com/Letitia-Chang/WiFOP/actions/workflows/tests.yml)
+
 Predicting next-day wildfire ignition on a 5 km grid over California using daily
 weather, vegetation, and land-cover data, 2020–2023.
 
