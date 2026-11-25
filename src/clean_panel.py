@@ -5,13 +5,17 @@ Prepares the training-ready wildfire panel:
 - Loads the 2020-2023 fire-season raw panel
 - Tags each grid_id with a spatial block id (for spatial-block CV downstream)
 - Filters grid cells with NASA + NLCD coverage
-- Interpolates NDVI (per grid), forward-only — no bfill (see docs/leakage_audit.md #3)
+- Fills NDVI (per grid cell, per season) via forward-fill ONLY — no
+  interpolation, no bfill (docs/leakage_audit.md #3 and section 6)
 - Adds rolling window features (3d / 7d) and fire-history features
   (fires_last_7d/14d, ndvi_7d_mean), all shifted so the current day is
-  excluded from its own "last N days" window (docs/leakage_audit.md #2)
+  excluded from its own "last N days" window (docs/leakage_audit.md #2),
+  and all grouped by (grid_id, year) so a window never reaches back into
+  the previous fire season (docs/leakage_audit.md section 6)
 - Builds the fire_tomorrow label by shifting fire_today back one day per
-  grid cell, so every feature (keyed to day t) predicts day t+1, matching
-  the "next-day ignition" project brief (docs/leakage_audit.md #1)
+  grid cell PER SEASON, so every feature (keyed to day t) predicts day
+  t+1 within the same fire season, matching the "next-day ignition"
+  project brief (docs/leakage_audit.md #1 and section 6)
 - Outputs a clean ML-ready dataset
 
 The transforms themselves live in panel_transforms.py, which

@@ -242,3 +242,92 @@ rate makes a large shift in the headline conclusions unlikely, and a
 pipeline rebuild + full retrain + re-evaluation is substantial compute) —
 flagged here as a known, fixed-at-the-source bug whose downstream effect on
 `docs/results.md`'s existing numbers is not yet measured.
+
+## 6. Two more bugs found while preparing the WFIGS-fix rerun (2026-11-25)
+
+Found while setting up the pipeline rerun that was supposed to just apply
+the item-5 WFIGS fix — neither was caught by the original audit or its
+regression tests, despite both tests existing and passing. Both are now
+fixed in `src/panel_transforms.py`, with new regression tests in
+`tests/test_panel_transforms.py` confirmed to catch each bug (verified by
+temporarily reintroducing each one and watching the corresponding test
+fail, same discipline as item #7's reproducibility harness).
+
+### 6a. The NDVI "forward-only" fix (#3) didn't actually hold for interior gaps
+
+**The bug:** `interpolate_ndvi` used
+`x.interpolate("linear", limit_direction="forward").ffill()`. The
+`limit_direction` argument only controls which end of a run of NaNs gets
+*extrapolated* (i.e. leading/trailing gaps with no known value on one
+side) — it does **not** make interior interpolation forward-only. For a
+gap strictly between two known readings (e.g. `[0.4, NaN, NaN, 1.0]`),
+pandas' linear interpolation always uses **both** endpoints regardless of
+`limit_direction`, producing a ramp (`0.6, 0.8`) that leaks the *future*
+`1.0` reading into the earlier NaN days. The original leading-gap test
+(`test_ndvi_interpolation_never_backfills_leading_gap`) happened to only
+exercise the one case `limit_direction` genuinely does control, so it kept
+passing while this was broken.
+
+**Fix:** replaced `.interpolate("linear", ...).ffill()` with plain
+`.ffill()` — carries the last known value forward only, never computes a
+value using a later reading. This is a real, if small, behavior change:
+previously-interpolated interior gaps now hold flat at the last known
+value instead of ramping.
+
+### 6b. Every rolling/shift operation crossed fire-season boundaries
+
+**The bug:** the raw panel only has rows for the fire season (roughly
+Jun-Sep) each year — there's no Oct-May data at all. So within one grid
+cell's rows sorted by date, September of year N is immediately followed
+by June of year N+1 in **row position**, despite being ~8 months apart in
+**time**. Every transform in this file grouped by `grid_id` alone, and
+`.shift()`/`.rolling()` operate on row position, not elapsed time — so:
+
+- `fires_last_7d`/`14d`, `ndvi_7d_mean`, and the raw weather rolling
+  features (`T2M_3d_mean`, etc.) at the start of a new season could pull
+  in fire/weather/NDVI data from the tail end of the *previous* season, 8
+  months earlier.
+- **More seriously:** `fire_tomorrow` on the last day of every
+  non-final year's season (e.g. Sep 30, 2020/2021/2022) was being set to
+  the **following year's June 1st** fire status, instead of being dropped
+  as undefined (there's no real "tomorrow" after a season ends). On the
+  real panel this affected 78,585 rows (26,195 cells × 3 year-boundaries),
+  102 of them mislabeled as positive.
+
+**Fix:** every grouping in `panel_transforms.py` is now `(grid_id, year)`
+via a shared `_season_groups()` helper, not `grid_id` alone. The
+consequence for `build_fire_tomorrow_label`: the last day of *every*
+season (not just the single last day of the whole multi-year series) is
+now correctly dropped. The consequence for the rolling features: the
+first few days of each season now have fewer valid prior values within
+their own window (correctly — there genuinely isn't a window to look back
+on at the start of a new season), which produces a few more `NaN`
+weather-rolling values at each season's start that get dropped by the
+downstream `dropna` in each training script, and a few more `fires_last_*`
+values that correctly fall back to 0 instead of incorrectly carrying
+fire counts over from the previous season.
+
+### Separately flagged, not fixed: UTC day boundary vs. local fire-weather day
+
+`scripts/download_irwin_wfigs.py` computes `date` from
+`FireDiscoveryDateTime` as a UTC timestamp's calendar day
+(`pd.to_datetime(..., utc=True).dt.strftime("%Y-%m-%d")`). California is
+UTC-7/UTC-8; a fire discovered after ~4-5pm local time gets dated the
+*following* UTC day. NASA POWER's daily values are computed on a
+different day convention (not confirmed to be local solar time vs. UTC
+for this project's download). This means an evening fire's label date
+could be off by one day relative to the weather features it's paired
+with — a real possible issue, but confirming and fixing it requires
+pinning down NASA POWER's exact day-boundary convention, which hasn't
+been done. Flagged here rather than silently assumed correct; see
+`docs/results.md`'s "Still open" list.
+
+### Status
+
+Both bugs fixed in code and covered by regression tests as of this
+writing. **Not yet re-run through the full pipeline** — this is being
+done together with the item-5 WFIGS incident-type fix in one combined
+rerun (see `docs/results.md` for results once available), since isolating
+each fix's individual numerical contribution would roughly double the
+compute cost for limited portfolio value; each fix is independently
+justified as a correctness fix regardless of its measured effect size.

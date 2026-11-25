@@ -491,4 +491,27 @@ falsify the earlier results.
 - **The within-cell bootstrap and the land-cover/NDVI timing-signal result
   (section 5 above) are unexplained** — worth a follow-up investigation
   (e.g. test `PS`/NDVI interaction terms, or an edge-of-season effect)
-  before citing that result as more than a flagged oddity.
+  before citing that result as more than a flagged oddity. **Possibly
+  related to the two bugs found below:** the within-cell check above was
+  run on a panel built before the season-boundary fix, so some of that
+  "unexplained" NDVI/land-cover-tied timing signal could be an artifact of
+  season-crossing contamination rather than a real effect — not confirmed
+  either way, just flagged as a plausible connection worth re-checking
+  once the pipeline is rerun.
+- **Two more real bugs found while preparing the WFIGS-fix rerun
+  (2026-11-25), both now fixed in code, neither yet re-run:** (1) the
+  earlier NDVI "forward-only" fix (#3) didn't actually hold for interior
+  gaps — `limit_direction="forward"` doesn't make interior interpolation
+  forward-only in pandas, only extrapolation at the edges does, so interior
+  NDVI gaps were still leaking future readings. Fixed with a plain
+  `.ffill()`. (2) every rolling/shift transform grouped by `grid_id` alone,
+  but the data is fire-season-only (no Oct-May rows), so September of one
+  year was adjacent, in row position, to June of the next — windows and
+  the `fire_tomorrow` label shift were silently reaching across an 8-month
+  gap. Most seriously, `fire_tomorrow` on the last day of every non-final
+  season was set to the following year's June 1st status instead of being
+  dropped (78,585 affected rows, 102 mislabeled positive). Fixed by
+  grouping every transform by `(grid_id, year)`. Full writeup:
+  `docs/leakage_audit.md` section 6. Also newly flagged, not fixed: a
+  possible UTC-vs-local day-boundary mismatch between the fire label date
+  and the weather data's day convention (same section).
