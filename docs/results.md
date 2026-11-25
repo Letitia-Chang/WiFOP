@@ -245,8 +245,215 @@ linear decision boundary can't capture as well.
 Figures: `reports/figures/shap_summary_{weighted,smote,catboost,rf,svm}.png`.
 Full numbers: `reports/metrics/operational_eval_{weighted,smote,catboost,rf,svm}.json`.
 
+## Critique follow-up: baselines, ablation, tuning, and uncertainty
+
+Everything above treats the five models' numbers at face value. A
+self-critique afterward (same instinct as the leakage audit: a result this
+clean deserves suspicion, not relief) asked four questions before trusting
+any of it further. Short version: **none of the trained models beats a
+simple "how often has this grid cell burned before" baseline on PR-AUC or
+top-k recall**, hyperparameter tuning doesn't close that gap, and the three
+tree models aren't statistically distinguishable from each other. There's a
+small, real, above-chance "which day" signal once you control for "which
+cell" and exclude days following an active fire — but it's modest, and it's
+not clearly coming from weather. Scripts: `src/baseline_models.py`,
+`src/ablation_land_cover.py`, `src/tune_models.py`, `src/bootstrap_ci.py`,
+plus four follow-up scripts written during this check (`src/wifop_extra.py`,
+`src/wifop_hist_feature.py`, `src/wifop_within_cell2.py`, and
+`src/wifop_within_cell.py` — the latter is a first, flawed attempt, kept
+labeled for the record, not as a result to cite).
+
+### 1. Does the model beat a trivial baseline?
+
+Two baselines, same 2023 test set, same evaluation, with scores heavily
+tied (both are effectively low-cardinality: persistence is an integer
+count, historical rate has one value per grid cell) — reported
+**tie-aware** (expected recall under random tie-breaking at the cutoff, not
+just the raw sort order, which is otherwise arbitrary among ties):
+
+| | ROC-AUC | PR-AUC | Top-10% recall (expected) |
+|---|---|---|---|
+| **historical fire rate per cell** (2020-2022) | 0.902 | **0.102** | **0.789** (worst/best 0.767–0.880) |
+| persistence (`fires_last_14d` as score) | 0.684 | 0.065 | 0.434 (mostly tied/random past 2%) |
+| XGBoost (weighted, full features) | 0.928 | 0.081 | 0.752 |
+| CatBoost | 0.930 | 0.084 | — |
+| Random Forest | 0.924 | 0.063 | 0.749 |
+
+**The historical-rate baseline — nothing more than "what fraction of past
+days did this exact cell burn on" — beats every trained model on PR-AUC and
+top-10% recall.** The models only win on ROC-AUC. The honest statement is
+*"the current models do not beat per-cell fire history at ranking,"* not
+*"there is no weather signal"* — see sections 2–3 below for what survives
+that distinction. The baseline does see slightly more data than the models
+(it's computed from all 2020-2022 rows including the validation blocks and
+rows the models drop for missing features), a small asymmetry in the
+baseline's favor, noted rather than corrected for.
+Full numbers: `reports/metrics/baseline_tie_aware.json`.
+Figures: `reports/figures/topk_lift_baseline_{historical_rate,persistence}.png`.
+
+### 2. How much of the model's skill is land cover vs. weather?
+
+Four XGBoost refits (same hyperparameters, same split), all scored on one
+common row set (2,522,200 test rows, 4,154 fires) so the comparison is
+apples-to-apples:
+
+| Feature set | ROC-AUC | PR-AUC | Top-10% recall | Top-0.1% recall (lift) |
+|---|---|---|---|---|
+| **full** (29 features, control) | 0.928 | 0.081 | 0.752 | 0.133 (133x) |
+| land cover only (16 features) | 0.923 | 0.076 | 0.731 | 0.124 (124x) |
+| no land cover (13 features: weather/NDVI/fire-history) | 0.876 | 0.068 | 0.574 | 0.129 (129x) |
+| weather + fire-history only (strict, drops NDVI/`PS` too) | 0.796 | 0.062 | 0.492 | 0.125 |
+| weather only (no fire-history at all) | 0.746 | 0.007 | 0.331 | 0.020 (20.5x) |
+| fire-history only (`fires_last_7d`/`14d`) | 0.684 | 0.057 | 0.451 | 0.128 |
+
+**Land cover alone gets most of the way to the full model** (10% recall
+0.731 vs. 0.752) and **beats the full model's own first baseline comparison
+at the same cutoff** (0.731 vs. historical rate's 0.789 is still a loss, but
+land-cover-only is much closer to the real model than weather-only is).
+**Weather alone is weak** — it ranks rows well above chance (PR-AUC 0.0071
+is ~4.3x the base rate, 0.1% lift of 20.5x) but far below fire history or
+land cover, and nowhere near the full model. **The top 0.1% is driven almost
+entirely by recent fire history**, not land cover (0.133 full vs. 0.129
+no-land-cover at that single cutoff) — land cover matters much more in the
+middle of the ranking (10%) than at the very top.
+Full numbers: `reports/metrics/ablation_land_cover.json`, `ablation_strict.json`.
+
+### 3. Does giving the model the historical rate as a feature help?
+
+Added the per-cell historical rate as an extra feature to weighted XGBoost
+(leave-one-year-out for training rows, to avoid leaking each row's own
+label into its own feature) and compared against the baseline alone, with a
+**paired block bootstrap** (200 resamples) on the *differences*, which is
+the only fair way to ask "does X beat Y" when both are evaluated on the
+same spatially-clustered test set:
+
+- XGBoost + historical rate **vs. historical rate alone**: PR-AUC
+  difference 95% CI **[-0.017, -0.0001]** — no better, possibly slightly
+  worse. Top-10% recall difference CI straddles zero.
+- XGBoost + historical rate **vs. XGBoost without it**: recall difference CI
+  **[+0.020, +0.048]** (a real improvement), PR-AUC CI straddles zero.
+- Historical rate alone **vs. full XGBoost**: PR-AUC difference CI
+  **[+0.005, +0.036]** — the baseline really is better, not just noise.
+- SHAP (log-odds scale): once included, `hist_rate` is the #1 ranked
+  feature, ahead of `pct_21`, `ndvi_7d_mean`, and `PS`.
+
+**Reading:** giving the model the location information helps it a bit over
+not having it, but even with that information it still doesn't clearly beat
+the raw location signal on the metrics that matter (PR-AUC, top-k recall) —
+only on ROC-AUC. Weather and land cover add *some* marginal value on top of
+location, not enough to make the combined model a clear win over location
+alone with these settings.
+Full numbers: `reports/metrics/hist_feature.json`.
+
+### 4. Hyperparameter re-tuning and uncertainty
+
+25-trial Optuna search (PR-AUC objective, spatial-block validation,
+unseeded — a caveat, not a correctness issue) per tree model, plus 200-
+resample block-bootstrap 95% CIs (resampling spatial blocks, not individual
+rows, to respect the spatial autocorrelation the rest of this project
+already treats as real) for both the default and tuned versions:
+
+| Model | Test PR-AUC (default) | Test PR-AUC (tuned) | 95% CI (default) |
+|---|---|---|---|
+| Weighted XGBoost | 0.081 | 0.085 | [0.026, 0.123] |
+| CatBoost | 0.084 | 0.083 | [0.024, 0.134] |
+| Random Forest | 0.063 | 0.074 | [0.021, 0.110] |
+
+**Tuning makes no detectable difference** — every tuned CI overlaps its
+default CI almost entirely (these are separate, not paired, intervals, so
+"no detectable difference" is the accurate claim, not "tuning made no
+difference"). More importantly, **the default confidence intervals are wide
+enough that the three tree models are not separable from each other** — the
+~0.003 PR-AUC gap between CatBoost and weighted XGBoost reported earlier in
+this doc is well within bootstrap noise, not a real ranking. Best tuned
+hyperparameters consistently favor *shallower* trees (e.g. weighted XGBoost:
+depth 3, not the default 6) — consistent with the top-k signal being mostly
+spatial rather than needing deep interaction terms to model fine-grained
+weather dynamics.
+Full numbers: `reports/metrics/tuned_{weighted,catboost,rf}_metadata.json`,
+`bootstrap_ci_{weighted,catboost,rf,tuned_weighted,tuned_catboost,tuned_rf}.json`.
+
+### 5. Is there real day-to-day "which day" skill, or only "which cell"?
+
+The strongest test: restrict to test rows with **no fire in the same cell
+in the past 14 days** (removes "an active fire is still going" as a
+shortcut), group rows by grid cell (and separately by cell × month, to
+remove season as a form of "timing"), and compute a per-group AUROC (is a
+fire day ranked above that cell's own non-fire days?) — chance is 0.5,
+and this isolates genuine day-to-day timing skill from "knowing which cells
+burn":
+
+| Model | Overall ROC-AUC | Within-cell AUROC | Within-cell-month AUROC |
+|---|---|---|---|
+| Weighted XGBoost (full) | 0.904 | 0.554 | 0.540 |
+| CatBoost | 0.899 | 0.548 | 0.537 |
+| Random Forest | 0.898 | 0.540 | 0.528 |
+| no land cover | 0.826 | 0.530 | 0.529 |
+| land cover only | 0.903 | **0.500** (constant within a cell) | 0.500 |
+| weather + fire-history (strict) | 0.707 | 0.515 | 0.514 |
+| weather only | 0.706 | 0.513 | **0.503** |
+| historical rate alone | 0.860 | 0.500 (constant within a cell) | 0.500 |
+
+**Most of the overall 0.90 ROC-AUC really is "which cell," not "which
+day."** A small but real above-chance timing signal survives for the
+full-feature models (~0.54-0.55 within-cell, falling to ~0.53-0.54 once
+season is also removed) — not nothing, but far from the headline numbers.
+**Weather alone is close to pure chance once season is controlled for**
+(0.503) — so the modest timing skill that does exist is not clearly a
+weather effect. It shows up more with land cover and NDVI present than
+without (full 0.546 vs. no-land-cover 0.529, within-cell-month), which is
+surprising since land cover is constant within a cell-year and shouldn't
+explain *day-to-day* timing on its own — **this is flagged as an unexplained
+result**, not attributed to any specific mechanism (candidate explanations
+not yet tested: `PS`/NDVI interactions with weather, or an edge-of-season
+effect). The within-cell bootstrap also ignores that neighboring cells burn
+together (spatial clustering), so these confidence intervals are likely too
+narrow.
+
+An earlier version of this check (`src/wifop_within_cell.py`,
+`within_cell_auc.json` — removed) didn't exclude post-fire days, which
+pushed fire-history-using models to *below* 0.5: it was measuring "an
+active fire is ongoing" rather than "predicting a new one." Caught and
+redone (`wifop_within_cell2.py`, `within_cell_auc_newfires.json`) before any
+conclusion was drawn from it — worth keeping as a record of how easy it is
+to build a plausible-looking but wrong evaluation, the same lesson as the
+original leakage audit.
+
+### Bottom line
+
+The honest summary, after all four checks: **this project's models are
+mostly a sophisticated way of re-deriving which grid cells have historically
+been fire-prone**, with a real but modest layer of genuine day-to-day
+predictive skill on top, whose source isn't yet pinned down (not clearly
+weather, surprisingly tied to land cover/NDVI in a way that isn't
+mechanistically explained). This doesn't make the project worthless — a
+model that reliably ranks "where" is itself operationally useful, and the
+original WUI/land-cover hypothesis is, if anything, reinforced — but it's a
+meaningfully more modest claim than "75% recall at the top 10%" suggested on
+its own, and it wouldn't have been visible without deliberately trying to
+falsify the earlier results.
+
 ## Still open
 
 - The grid-generation duplication and NDVI-pipeline duplication questions
   from `docs/inventory.md`'s open questions are unrelated to this run and
   still unresolved.
+- **Code duplication risk.** The feature list (`BASE_FEATURES`/`FEATURE_COLS`)
+  is copy-pasted near-identically across 5+ training scripts and
+  `evaluate_model.py` — any future fix has to be hand-propagated everywhere,
+  which is exactly the kind of thing that let the original leakage bugs
+  survive unnoticed. Should become one shared `features.py`.
+- **Fire-label date semantics were never audited.** Does WFIGS's `date`
+  field mean ignition date or discovery/reporting date? If it's discovery,
+  there's reporting lag baked into the label that's a different, subtler
+  issue than anything in the leakage audit, and it would affect whether
+  "next-day" is even the right framing.
+- **No reproducibility harness.** No `environment.yml`/`requirements.txt`,
+  no CI, no regression test guarding the fixed leakage bugs (e.g. "assert
+  the rolling fire-history feature excludes today"). Someone touching the
+  pipeline later could silently reintroduce the exact bug this whole audit
+  fixed.
+- **The within-cell bootstrap and the land-cover/NDVI timing-signal result
+  (section 5 above) are unexplained** — worth a follow-up investigation
+  (e.g. test `PS`/NDVI interaction terms, or an edge-of-season effect)
+  before citing that result as more than a flagged oddity.

@@ -18,9 +18,13 @@ recall, lift, calibration, SHAP) on top of the original modeling work.
 end-to-end on real data; all five models (XGBoost weighted/SMOTE, CatBoost,
 random forest, linear SVM) trained, operationally evaluated (top-k recall,
 lift, calibration, SHAP), and compared against the original project's
-PR-AUC. See [`docs/results.md`](docs/results.md) for metrics and
-[`docs/inventory.md`](docs/inventory.md) for what was carried over from the
-two source repos and what's been rewritten.
+PR-AUC. **A follow-up self-critique then checked those numbers against a
+trivial baseline — see docs/results.md's "Critique follow-up" section: a
+simple per-cell historical fire-rate baseline beats every trained model on
+PR-AUC/top-k recall, and most of the models' skill turns out to be
+location, not weather.** See [`docs/results.md`](docs/results.md) for
+metrics and [`docs/inventory.md`](docs/inventory.md) for what was carried
+over from the two source repos and what's been rewritten.
 
 ## Credit
 
