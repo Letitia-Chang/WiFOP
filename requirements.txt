@@ -1,0 +1,17 @@
+# Pinned to what this project was actually run with (conda env `wifop`,
+# Python 3.12) — see environment.yml for the full conda environment. This
+# file is for `pip install -r requirements.txt` into any Python 3.12 env;
+# prefer environment.yml if you have conda/mamba available.
+pandas==2.3.3
+numpy==2.3.4
+scikit-learn==1.7.2
+xgboost==3.1.1
+catboost==1.2.8
+shap==0.54.1
+imbalanced-learn==0.14.0
+matplotlib==3.10.7
+joblib==1.5.2
+requests==2.32.5
+optuna==4.6.0
+scipy==1.16.3
+pytest==9.2.0

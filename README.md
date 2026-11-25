@@ -37,4 +37,16 @@ over from the two source repos and what's been rewritten.
   `docs/inventory.md` for per-script authorship.
 
 See [`docs/results.md`](docs/results.md) for the full results table and
-operational evaluation. Reproduction steps to come.
+operational evaluation.
+
+## Running the tests
+
+```bash
+pip install -r requirements.txt   # or: conda env create -f environment.yml
+pytest tests/ -v
+```
+
+Regression-tests the leakage fixes in `docs/leakage_audit.md` against
+synthetic data (fast, no real data needed); runs automatically on every
+push/PR via GitHub Actions. Does not run the full data pipeline or model
+training — those need the real (gitignored) dataset and are run manually.

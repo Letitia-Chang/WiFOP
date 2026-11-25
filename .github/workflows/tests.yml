@@ -1,0 +1,30 @@
+name: Tests
+
+# Runs the leakage-fix regression tests (tests/test_panel_transforms.py)
+# on every push/PR. These run on tiny synthetic data in well under a
+# minute — no need for the real (gitignored, multi-GB) dataset. This is
+# intentionally narrow: it guards the four leakage fixes in
+# docs/leakage_audit.md, not a full pipeline/training run (that needs the
+# real data and isn't something CI should do on every push — see
+# docs/results.md's "Still open" item #7 for the reasoning).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install pandas==2.3.3 numpy==2.3.4 pytest==9.2.0
+
+      - name: Run leakage-fix regression tests
+        run: python -m pytest tests/ -v

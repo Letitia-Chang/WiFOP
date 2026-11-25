@@ -458,11 +458,23 @@ falsify the earlier results.
   `scripts/download_irwin_wfigs.py` (now filters `IncidentTypeCategory='WF'`)
   — **not yet re-run through the full pipeline/retrain**, so this doesn't
   change any number reported elsewhere in this document yet.
-- **No reproducibility harness.** No `environment.yml`/`requirements.txt`,
-  no CI, no regression test guarding the fixed leakage bugs (e.g. "assert
-  the rolling fire-history feature excludes today"). Someone touching the
-  pipeline later could silently reintroduce the exact bug this whole audit
-  fixed.
+- ~~**No reproducibility harness.**~~ **Done.** `environment.yml` and
+  `requirements.txt` pin the exact package versions this project was run
+  with. The leakage-critical logic in `clean_panel.py` was pulled out into
+  testable functions (`src/panel_transforms.py`) and
+  `tests/test_panel_transforms.py` adds 11 regression tests that would
+  fail if any of the 4 leakage fixes were silently reintroduced —
+  including the exact example this item named ("assert the rolling
+  fire-history feature excludes today"). `.github/workflows/tests.yml`
+  runs them on every push/PR (synthetic data only, <1 second — the real
+  26M-row pipeline run is deliberately NOT part of CI). Verified the tests
+  actually catch a regression, not just trivially pass, by temporarily
+  reintroducing the fire-history inclusivity bug and confirming the test
+  failed, then restoring the fix. The refactor itself (moving logic from
+  script to functions) was not re-verified against the full real dataset
+  end-to-end — only against the new unit tests and a manual read-through —
+  since running the full pipeline is expensive; flagged here rather than
+  assumed.
 - **The within-cell bootstrap and the land-cover/NDVI timing-signal result
   (section 5 above) are unexplained** — worth a follow-up investigation
   (e.g. test `PS`/NDVI interaction terms, or an edge-of-season effect)
