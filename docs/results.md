@@ -438,11 +438,13 @@ falsify the earlier results.
 - The grid-generation duplication and NDVI-pipeline duplication questions
   from `docs/inventory.md`'s open questions are unrelated to this run and
   still unresolved.
-- **Code duplication risk.** The feature list (`BASE_FEATURES`/`FEATURE_COLS`)
-  is copy-pasted near-identically across 5+ training scripts and
-  `evaluate_model.py` — any future fix has to be hand-propagated everywhere,
-  which is exactly the kind of thing that let the original leakage bugs
-  survive unnoticed. Should become one shared `features.py`.
+- ~~**Code duplication risk.**~~ **Done.** `src/features.py` is now the
+  single source of truth for `BASE_FEATURES`/`NONLINEAR_FEATURES`/
+  `DATA_PATH`/`TARGET`, imported by all nine scripts that previously
+  redefined them (`train_xgboost_weighted.py`, `train_xgboost_smote.py`,
+  `train_random_forest_wildfire.py`, `train_catboost_wildfire.py`,
+  `svm_downsample_smote.py`, `evaluate_model.py`, `ablation_land_cover.py`,
+  `bootstrap_ci.py`, `tune_models.py`).
 - **Fire-label date semantics were never audited.** Does WFIGS's `date`
   field mean ignition date or discovery/reporting date? If it's discovery,
   there's reporting lag baked into the label that's a different, subtler
