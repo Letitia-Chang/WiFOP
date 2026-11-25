@@ -157,6 +157,10 @@ feature_df.index.name = "Rank"
 feature_df.index = feature_df.index + 1
 print(feature_df.to_string())
 
+import joblib
+joblib.dump(clf_pipeline, "../models/svm_model.pkl")
+print("Saved ../models/svm_model.pkl")
+
 import json
 metadata = {
     "spatial_val_roc_auc": float(val_auc),

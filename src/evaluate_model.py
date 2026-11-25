@@ -17,10 +17,15 @@ docs/results.md's ROC-AUC numbers.
 Usage:
     python src/evaluate_model.py --model weighted
     python src/evaluate_model.py --model smote
+    python src/evaluate_model.py --model catboost
+    python src/evaluate_model.py --model rf
+    python src/evaluate_model.py --model svm
 """
 
 import argparse
 import json
+import os
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import joblib
@@ -36,7 +41,7 @@ from sklearn.metrics import brier_score_loss
 DATA_PATH = "../data/processed/california_5km_training_panel_2020-2023_clean.csv"
 FIG_DIR = Path(__file__).resolve().parent.parent / "reports" / "figures"
 
-FEATURE_COLS = [
+BASE_FEATURES = [
     "PRECTOTCORR", "PS", "RH2M", "T2M", "WS10M",
     "PRECTOT_7d_sum", "T2M_3d_mean", "RH2M_3d_min", "WS10M_3d_max",
     "ndvi", "ndvi_7d_mean",
@@ -44,27 +49,57 @@ FEATURE_COLS = [
     "pct_11","pct_12","pct_21","pct_22","pct_23","pct_24","pct_31",
     "pct_41","pct_42","pct_43","pct_52","pct_71","pct_81","pct_82","pct_90","pct_95"
 ]
+NONLINEAR_FEATURES = ["vpd_proxy", "hot_windy", "dry_windy", "fuel_moisture_proxy"]
 TARGET = "fire_tomorrow"
 
 MODELS = {
     "weighted": {
         "path": "../models/xgb_weighted_model.pkl",
         "metadata": "../reports/metrics/xgb_weighted_metadata_2020-2023.json",
+        "features": BASE_FEATURES,
+        "kind": "sklearn_tree",
     },
     "smote": {
         "path": "../models/xgb_smote_model.pkl",
         "metadata": "../reports/metrics/xgb_smote_metadata_2020-2023.json",
+        "features": BASE_FEATURES,
+        "kind": "sklearn_tree",
+    },
+    "catboost": {
+        "path": "../models/catboost_model.cbm",
+        "metadata": "../reports/metrics/catboost_metadata_2020-2023.json",
+        "features": BASE_FEATURES + NONLINEAR_FEATURES,
+        "kind": "catboost",
+    },
+    "rf": {
+        "path": "../models/rf_model.pkl",
+        "metadata": "../reports/metrics/rf_metadata_2020-2023.json",
+        "features": BASE_FEATURES + NONLINEAR_FEATURES,
+        "kind": "sklearn_tree",
+    },
+    "svm": {
+        "path": "../models/svm_model.pkl",
+        "metadata": "../reports/metrics/svm_metadata_2020-2023.json",
+        "features": BASE_FEATURES + NONLINEAR_FEATURES,
+        "kind": "linear_svm_pipeline",
     },
 }
 
 
-def load_test_set():
+def load_test_set(feature_cols):
     print("Loading cleaned panel...")
     df = pd.read_csv(DATA_PATH, parse_dates=["date"])
-    df = df.dropna(subset=FEATURE_COLS + [TARGET, "block_id"])
+
+    if set(NONLINEAR_FEATURES) & set(feature_cols):
+        df["vpd_proxy"] = (1 - df["RH2M"] / 100) * df["T2M"]
+        df["hot_windy"] = df["T2M"] * df["WS10M"]
+        df["dry_windy"] = (100 - df["RH2M"]) * df["WS10M"]
+        df["fuel_moisture_proxy"] = df["ndvi"] * df["RH2M"]
+
+    df = df.dropna(subset=feature_cols + [TARGET, "block_id"])
     test_mask = df["date"].dt.year == 2023
     test = df.loc[test_mask]
-    return test[FEATURE_COLS], test[TARGET]
+    return test[feature_cols], test[TARGET]
 
 
 def top_k_table(y_true, y_proba, ks=(0.001, 0.005, 0.01, 0.02, 0.05, 0.10)):
@@ -132,9 +167,63 @@ def plot_calibration(y_true, y_proba, model_name):
     return brier
 
 
-def plot_shap(model, X_sample, model_name):
+def _shap_chunk(model, X_chunk):
     explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X_sample)
+    return explainer.shap_values(X_chunk)
+
+
+def _tree_shap_values(model, X_sample, n_jobs):
+    """TreeExplainer cost scales with rows x tree depth/leaves, not with
+    the model object, so splitting rows across processes parallelizes
+    almost linearly (no shared state needed — each worker rebuilds its
+    own explainer from the model, which is picklable).
+    """
+    n_jobs = max(1, min(n_jobs, len(X_sample)))
+    if n_jobs == 1:
+        shap_values = shap.TreeExplainer(model).shap_values(X_sample)
+    else:
+        chunks = np.array_split(X_sample, n_jobs)
+        with ProcessPoolExecutor(max_workers=n_jobs) as ex:
+            results = list(ex.map(_shap_chunk, [model] * len(chunks), chunks))
+        if isinstance(results[0], list):
+            shap_values = [np.concatenate([r[i] for r in results], axis=0) for i in range(len(results[0]))]
+        else:
+            shap_values = np.concatenate(results, axis=0)
+
+    # Normalize to a single 2-D (rows, features) array for the positive class.
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1]
+    elif shap_values.ndim == 3:
+        shap_values = shap_values[..., 1]
+    return shap_values
+
+
+def plot_shap(model, X_sample, model_name, kind, n_jobs=1):
+    if kind == "linear_svm_pipeline":
+        # LinearSVC has no native tree/kernel SHAP support cheap enough for
+        # this row count; use the pipeline's own learned coefficients
+        # (post feature-selection) as the importance ranking instead, same
+        # as svm_downsample_smote.py reports at training time.
+        clf = model.named_steps["clf"]
+        fs = model.named_steps["feature_selection"]
+        selected_mask = fs.get_support()
+        feature_names = np.array(X_sample.columns)[selected_mask]
+        importance = np.abs(clf.coef_[0])
+        ranked = pd.Series(importance, index=feature_names).sort_values(ascending=False)
+
+        fig, ax = plt.subplots(figsize=(7, 5))
+        top = ranked.head(15).iloc[::-1]
+        ax.barh(top.index, top.values, color="steelblue")
+        ax.set_xlabel("|LinearSVC coefficient| (post feature-selection, standardized inputs)")
+        ax.set_title(f"Feature importance — {model_name}")
+        fig.tight_layout()
+        out_path = FIG_DIR / f"shap_summary_{model_name}.png"
+        fig.savefig(out_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved {out_path} (coefficient-based, not SHAP — LinearSVC has no cheap SHAP explainer)")
+        return ranked
+
+    shap_values = _tree_shap_values(model, X_sample, n_jobs)
 
     fig = plt.figure(figsize=(8, 7))
     shap.summary_plot(shap_values, X_sample, show=False, max_display=15)
@@ -154,18 +243,35 @@ def main():
     ap.add_argument("--model", choices=list(MODELS), required=True)
     ap.add_argument("--shap-sample", type=int, default=20000,
                      help="rows to sample for SHAP (full 2.5M-row test set is too slow)")
+    ap.add_argument("--shap-jobs", type=int, default=1,
+                     help="processes to split the SHAP sample across (tree models only)")
     args = ap.parse_args()
 
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     cfg = MODELS[args.model]
+    kind = cfg["kind"]
 
-    print(f"Loading model: {cfg['path']}")
-    model = joblib.load(cfg["path"])
+    print(f"Loading model: {cfg['path']} (kind={kind})")
+    if kind == "catboost":
+        from catboost import CatBoostClassifier
+        model = CatBoostClassifier()
+        model.load_model(cfg["path"])
+    else:
+        model = joblib.load(cfg["path"])
 
-    X_test, y_test = load_test_set()
+    X_test, y_test = load_test_set(cfg["features"])
     print(f"Test rows: {len(X_test):,} | fires: {int(y_test.sum())}")
 
-    y_proba = model.predict_proba(X_test)[:, 1]
+    if kind == "linear_svm_pipeline":
+        # LinearSVC has no predict_proba; use a sigmoid of the decision
+        # function as a probability-like score for ranking/calibration/
+        # Brier. Not a calibrated probability, but preserves ranking
+        # exactly (which is all top-k/lift need) and is the standard
+        # stand-in used to compare an SVM's calibration to the tree models'.
+        scores = model.decision_function(X_test)
+        y_proba = 1 / (1 + np.exp(-scores))
+    else:
+        y_proba = model.predict_proba(X_test)[:, 1]
 
     print("\n=== Top-k recall / lift ===")
     table = top_k_table(y_test, y_proba)
@@ -176,23 +282,39 @@ def main():
     brier = plot_calibration(y_test, y_proba, args.model)
     print(f"Brier score: {brier:.5f}")
 
-    print("\n=== SHAP ===")
-    rng = np.random.RandomState(42)
-    sample_idx = rng.choice(len(X_test), size=min(args.shap_sample, len(X_test)), replace=False)
-    X_sample = X_test.iloc[sample_idx]
-    shap_ranked = plot_shap(model, X_sample, args.model)
-    print("Top 10 features by mean |SHAP value|:")
-    print(shap_ranked.head(10).to_string())
-
+    out_path = Path(f"../reports/metrics/operational_eval_{args.model}.json")
     out = {
         "model": args.model,
         "test_rows": int(len(X_test)),
         "test_fires": int(y_test.sum()),
         "brier_score": float(brier),
         "top_k_table": table.to_dict(orient="records"),
-        "shap_top10": shap_ranked.head(10).to_dict(),
     }
-    out_path = Path(f"../reports/metrics/operational_eval_{args.model}.json")
+    with open(out_path, "w") as f:
+        json.dump(out, f, indent=2)
+    print(f"Saved {out_path} (top-k/calibration only — SHAP not run yet)")
+
+    print("\n=== SHAP ===" if kind != "linear_svm_pipeline" else "\n=== Feature importance ===")
+    rng = np.random.RandomState(42)
+    sample_idx = rng.choice(len(X_test), size=min(args.shap_sample, len(X_test)), replace=False)
+    X_sample = X_test.iloc[sample_idx]
+
+    if kind != "linear_svm_pipeline" and len(X_sample) > 50:
+        import time
+        probe = X_sample.iloc[:50]
+        t0 = time.time()
+        shap.TreeExplainer(model).shap_values(probe)
+        rate = (time.time() - t0) / len(probe)
+        est_serial = rate * len(X_sample)
+        print(f"SHAP timing probe: {rate:.4f} s/row serial -> est. {est_serial/60:.1f} min serial "
+              f"for {len(X_sample)} rows, ~{est_serial/max(1, args.shap_jobs)/60:.1f} min with "
+              f"--shap-jobs {args.shap_jobs}")
+
+    shap_ranked = plot_shap(model, X_sample, args.model, kind, n_jobs=args.shap_jobs)
+    print("Top 10 features by importance:")
+    print(shap_ranked.head(10).to_string())
+
+    out["shap_top10"] = shap_ranked.head(10).to_dict()
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
     print(f"\nSaved {out_path}")
