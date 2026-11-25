@@ -1,0 +1,14 @@
+{
+  "model": "rf",
+  "trials": 25,
+  "best_params": {
+    "n_estimators": 300,
+    "max_depth": 9,
+    "min_samples_split": 3,
+    "min_samples_leaf": 4
+  },
+  "spatial_val_roc_auc": 0.9022009724507066,
+  "spatial_val_pr_auc": 0.04643913999831343,
+  "test_2023_roc_auc": 0.9261407134235733,
+  "test_2023_pr_auc": 0.07348073646363738
+}

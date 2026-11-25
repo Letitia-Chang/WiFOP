@@ -1,0 +1,872 @@
+{
+  "hist_all_rows__all_test": {
+    "n": 2522200,
+    "fires": 4154,
+    "roc_auc": 0.9023706882807196,
+    "pr_auc": 0.1024368972907754,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "tied_at_cutoff": 121,
+        "distinct_scores": 62,
+        "expected_recall": 0.1561116040697605,
+        "worst_recall": 0.15286470871449206,
+        "best_recall": 0.15671641791044777,
+        "expected_lift": 156.1239840542228
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "tied_at_cutoff": 1331,
+        "distinct_scores": 62,
+        "expected_recall": 0.3116319592025573,
+        "worst_recall": 0.3040442946557535,
+        "best_recall": 0.3155994222436206,
+        "expected_lift": 62.32639184051146
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "tied_at_cutoff": 4840,
+        "distinct_scores": 62,
+        "expected_recall": 0.403461067098525,
+        "worst_recall": 0.3866153105440539,
+        "best_recall": 0.4130958112662494,
+        "expected_lift": 40.34610670985249
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "tied_at_cutoff": 12221,
+        "distinct_scores": 62,
+        "expected_recall": 0.5048440656207258,
+        "worst_recall": 0.48050072219547424,
+        "best_recall": 0.5178141550312951,
+        "expected_lift": 25.242203281036293
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "tied_at_cutoff": 39898,
+        "distinct_scores": 62,
+        "expected_recall": 0.6627839121681327,
+        "worst_recall": 0.6129032258064516,
+        "best_recall": 0.6822339913336543,
+        "expected_lift": 13.255678243362656
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "tied_at_cutoff": 185735,
+        "distinct_scores": 62,
+        "expected_recall": 0.7889192243405064,
+        "worst_recall": 0.7667308618199326,
+        "best_recall": 0.8798748194511314,
+        "expected_lift": 7.8891922434050645
+      }
+    ]
+  },
+  "hist_all_rows__seen_blocks": {
+    "n": 2025644,
+    "fires": 3436,
+    "roc_auc": 0.9071124012682613,
+    "pr_auc": 0.11075792071096417,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2026,
+        "tied_at_cutoff": 121,
+        "distinct_scores": 59,
+        "expected_recall": 0.16374267599264955,
+        "worst_recall": 0.15919674039580908,
+        "best_recall": 0.16530849825378346,
+        "expected_lift": 163.71390383438035
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 10128,
+        "tied_at_cutoff": 1331,
+        "distinct_scores": 59,
+        "expected_recall": 0.3168250346138338,
+        "worst_recall": 0.3070430733410943,
+        "best_recall": 0.3210128055878929,
+        "expected_lift": 63.366383334844464
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 20256,
+        "tied_at_cutoff": 4114,
+        "distinct_scores": 59,
+        "expected_recall": 0.4006101146430344,
+        "worst_recall": 0.3879511059371362,
+        "best_recall": 0.4158905704307334,
+        "expected_lift": 40.06188166794899
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 40513,
+        "tied_at_cutoff": 11011,
+        "distinct_scores": 59,
+        "expected_recall": 0.5022762452913792,
+        "worst_recall": 0.48457508731082655,
+        "best_recall": 0.5250291036088475,
+        "expected_lift": 25.1137378771508
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 101282,
+        "tied_at_cutoff": 33243,
+        "distinct_scores": 59,
+        "expected_recall": 0.660523041306901,
+        "worst_recall": 0.6219441210710128,
+        "best_recall": 0.6935389988358557,
+        "expected_lift": 13.210486912630833
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 202564,
+        "tied_at_cutoff": 145805,
+        "distinct_scores": 59,
+        "expected_recall": 0.7978257395546279,
+        "worst_recall": 0.780558789289872,
+        "best_recall": 0.889697322467986,
+        "expected_lift": 7.978273150087846
+      }
+    ]
+  },
+  "hist_model_rows_all_blocks__all_test": {
+    "n": 2522200,
+    "fires": 4154,
+    "roc_auc": 0.9017266188948243,
+    "pr_auc": 0.10271180412410263,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "tied_at_cutoff": 121,
+        "distinct_scores": 100,
+        "expected_recall": 0.1561116040697605,
+        "worst_recall": 0.15286470871449206,
+        "best_recall": 0.15671641791044777,
+        "expected_lift": 156.1239840542228
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "tied_at_cutoff": 1331,
+        "distinct_scores": 100,
+        "expected_recall": 0.3114226979544487,
+        "worst_recall": 0.3040442946557535,
+        "best_recall": 0.31391429947039,
+        "expected_lift": 62.284539590889736
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "tied_at_cutoff": 4840,
+        "distinct_scores": 100,
+        "expected_recall": 0.40550728760887644,
+        "worst_recall": 0.38468945594607606,
+        "best_recall": 0.41116995666827155,
+        "expected_lift": 40.55072876088765
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "tied_at_cutoff": 11858,
+        "distinct_scores": 100,
+        "expected_recall": 0.5050041077481379,
+        "worst_recall": 0.47496389022628793,
+        "best_recall": 0.5127587867116032,
+        "expected_lift": 25.250205387406893
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "tied_at_cutoff": 38478,
+        "distinct_scores": 100,
+        "expected_recall": 0.6622652620711075,
+        "worst_recall": 0.6097737120847376,
+        "best_recall": 0.6762156957149735,
+        "expected_lift": 13.245305241422148
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "tied_at_cutoff": 181500,
+        "distinct_scores": 100,
+        "expected_recall": 0.789527815468114,
+        "worst_recall": 0.7667308618199326,
+        "best_recall": 0.8779489648531535,
+        "expected_lift": 7.89527815468114
+      }
+    ]
+  },
+  "hist_model_rows_all_blocks__seen_blocks": {
+    "n": 2025644,
+    "fires": 3436,
+    "roc_auc": 0.9062717500474268,
+    "pr_auc": 0.11101525311368708,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2026,
+        "tied_at_cutoff": 121,
+        "distinct_scores": 88,
+        "expected_recall": 0.16374267599264955,
+        "worst_recall": 0.15919674039580908,
+        "best_recall": 0.16530849825378346,
+        "expected_lift": 163.71390383438035
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 10128,
+        "tied_at_cutoff": 1331,
+        "distinct_scores": 88,
+        "expected_recall": 0.31648326947011757,
+        "worst_recall": 0.3070430733410943,
+        "best_recall": 0.3189755529685681,
+        "expected_lift": 63.298028821339535
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 20256,
+        "tied_at_cutoff": 4114,
+        "distinct_scores": 88,
+        "expected_recall": 0.4026233146930638,
+        "worst_recall": 0.3862048894062864,
+        "best_recall": 0.41356228172293363,
+        "expected_lift": 40.26320604601681
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 40513,
+        "tied_at_cutoff": 10769,
+        "distinct_scores": 88,
+        "expected_recall": 0.502019415882544,
+        "worst_recall": 0.4787543655413271,
+        "best_recall": 0.5194994179278231,
+        "expected_lift": 25.10089644474563
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 101282,
+        "tied_at_cutoff": 32186,
+        "distinct_scores": 88,
+        "expected_recall": 0.6600815675070261,
+        "worst_recall": 0.6181606519208381,
+        "best_recall": 0.6865541327124564,
+        "expected_lift": 13.201657419197904
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 202564,
+        "tied_at_cutoff": 142296,
+        "distinct_scores": 88,
+        "expected_recall": 0.7979743036584841,
+        "worst_recall": 0.779976717112922,
+        "best_recall": 0.8873690337601863,
+        "expected_lift": 7.979758794060081
+      }
+    ]
+  },
+  "hist_model_rows_train_blocks__all_test": {
+    "n": 2522200,
+    "fires": 4154,
+    "roc_auc": 0.8805336530382731,
+    "pr_auc": 0.09261812253277196,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "tied_at_cutoff": 121,
+        "distinct_scores": 88,
+        "expected_recall": 0.14922985711273015,
+        "worst_recall": 0.1478093403948002,
+        "best_recall": 0.1494944631680308,
+        "expected_lift": 149.24169135992386
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "tied_at_cutoff": 1089,
+        "distinct_scores": 88,
+        "expected_recall": 0.2879371471090296,
+        "worst_recall": 0.28767453057294173,
+        "best_recall": 0.294174289841117,
+        "expected_lift": 57.58742942180593
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "tied_at_cutoff": 4840,
+        "distinct_scores": 88,
+        "expected_recall": 0.35463359024658103,
+        "worst_recall": 0.3420799229658161,
+        "best_recall": 0.3603755416466057,
+        "expected_lift": 35.463359024658104
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "tied_at_cutoff": 14762,
+        "distinct_scores": 88,
+        "expected_recall": 0.4436545654541058,
+        "worst_recall": 0.43042850264805005,
+        "best_recall": 0.46894559460760715,
+        "expected_lift": 22.18272827270529
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "tied_at_cutoff": 62073,
+        "distinct_scores": 88,
+        "expected_recall": 0.5828984372314948,
+        "worst_recall": 0.568608570052961,
+        "best_recall": 0.6432354357246028,
+        "expected_lift": 11.657968744629896
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "tied_at_cutoff": 142296,
+        "distinct_scores": 88,
+        "expected_recall": 0.6910464499546999,
+        "worst_recall": 0.6451612903225806,
+        "best_recall": 0.7339913336543091,
+        "expected_lift": 6.910464499546999
+      }
+    ]
+  },
+  "hist_model_rows_train_blocks__seen_blocks": {
+    "n": 2025644,
+    "fires": 3436,
+    "roc_auc": 0.9062717500474268,
+    "pr_auc": 0.11101525311368708,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2026,
+        "tied_at_cutoff": 121,
+        "distinct_scores": 88,
+        "expected_recall": 0.16374267599264955,
+        "worst_recall": 0.15919674039580908,
+        "best_recall": 0.16530849825378346,
+        "expected_lift": 163.71390383438035
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 10128,
+        "tied_at_cutoff": 1331,
+        "distinct_scores": 88,
+        "expected_recall": 0.31648326947011757,
+        "worst_recall": 0.3070430733410943,
+        "best_recall": 0.3189755529685681,
+        "expected_lift": 63.298028821339535
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 20256,
+        "tied_at_cutoff": 4114,
+        "distinct_scores": 88,
+        "expected_recall": 0.4026233146930638,
+        "worst_recall": 0.3862048894062864,
+        "best_recall": 0.41356228172293363,
+        "expected_lift": 40.26320604601681
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 40513,
+        "tied_at_cutoff": 10769,
+        "distinct_scores": 88,
+        "expected_recall": 0.502019415882544,
+        "worst_recall": 0.4787543655413271,
+        "best_recall": 0.5194994179278231,
+        "expected_lift": 25.10089644474563
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 101282,
+        "tied_at_cutoff": 32186,
+        "distinct_scores": 88,
+        "expected_recall": 0.6600815675070261,
+        "worst_recall": 0.6181606519208381,
+        "best_recall": 0.6865541327124564,
+        "expected_lift": 13.201657419197904
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 202564,
+        "tied_at_cutoff": 142296,
+        "distinct_scores": 88,
+        "expected_recall": 0.7979743036584841,
+        "worst_recall": 0.779976717112922,
+        "best_recall": 0.8873690337601863,
+        "expected_lift": 7.979758794060081
+      }
+    ]
+  },
+  "xgb_full__all_test": {
+    "n": 2522200,
+    "fires": 4154,
+    "roc_auc": 0.9281042978870231,
+    "pr_auc": 0.08091832479156218,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2397997,
+        "expected_recall": 0.13312469908521907,
+        "worst_recall": 0.13312469908521907,
+        "best_recall": 0.13312469908521907,
+        "expected_lift": 133.1352561588975
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2397997,
+        "expected_recall": 0.2746750120365912,
+        "worst_recall": 0.2746750120365912,
+        "best_recall": 0.2746750120365912,
+        "expected_lift": 54.935002407318244
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2397997,
+        "expected_recall": 0.35074626865671643,
+        "worst_recall": 0.35074626865671643,
+        "best_recall": 0.35074626865671643,
+        "expected_lift": 35.07462686567164
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2397997,
+        "expected_recall": 0.4494463168030814,
+        "worst_recall": 0.4494463168030814,
+        "best_recall": 0.4494463168030814,
+        "expected_lift": 22.472315840154067
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2397997,
+        "expected_recall": 0.6044776119402985,
+        "worst_recall": 0.6044776119402985,
+        "best_recall": 0.6044776119402985,
+        "expected_lift": 12.08955223880597
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2397997,
+        "expected_recall": 0.7522869523350987,
+        "worst_recall": 0.7522869523350987,
+        "best_recall": 0.7522869523350987,
+        "expected_lift": 7.522869523350987
+      }
+    ]
+  },
+  "xgb_full__seen_blocks": {
+    "n": 2025644,
+    "fires": 3436,
+    "roc_auc": 0.931373552879651,
+    "pr_auc": 0.08802787309528151,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2026,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1943326,
+        "expected_recall": 0.1440628637951106,
+        "worst_recall": 0.1440628637951106,
+        "best_recall": 0.1440628637951106,
+        "expected_lift": 144.0375496887379
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 10128,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1943326,
+        "expected_recall": 0.2820139697322468,
+        "worst_recall": 0.2820139697322468,
+        "best_recall": 0.2820139697322468,
+        "expected_lift": 56.40401912562275
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 20256,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1943326,
+        "expected_recall": 0.3538998835855646,
+        "worst_recall": 0.3538998835855646,
+        "best_recall": 0.3538998835855646,
+        "expected_lift": 35.390757098429965
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 40513,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1943326,
+        "expected_recall": 0.4543073341094296,
+        "worst_recall": 0.4543073341094296,
+        "best_recall": 0.4543073341094296,
+        "expected_lift": 22.715299422278314
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 101282,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1943326,
+        "expected_recall": 0.609720605355064,
+        "worst_recall": 0.609720605355064,
+        "best_recall": 0.609720605355064,
+        "expected_lift": 12.194436187218392
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 202564,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1943326,
+        "expected_recall": 0.7674621653084982,
+        "worst_recall": 0.7674621653084982,
+        "best_recall": 0.7674621653084982,
+        "expected_lift": 7.674636808041742
+      }
+    ]
+  },
+  "xgb_full_plus_hist__test_rate_train_blocks__all_test": {
+    "n": 2522200,
+    "fires": 4154,
+    "roc_auc": 0.9239262599103071,
+    "pr_auc": 0.08877131476871875,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2394607,
+        "expected_recall": 0.13697640828117477,
+        "worst_recall": 0.13697640828117477,
+        "best_recall": 0.13697640828117477,
+        "expected_lift": 136.98727080363957
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2394607,
+        "expected_recall": 0.2643235435724603,
+        "worst_recall": 0.2643235435724603,
+        "best_recall": 0.2643235435724603,
+        "expected_lift": 52.86470871449205
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2394607,
+        "expected_recall": 0.3310062590274434,
+        "worst_recall": 0.3310062590274434,
+        "best_recall": 0.3310062590274434,
+        "expected_lift": 33.10062590274434
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2394607,
+        "expected_recall": 0.43042850264805005,
+        "worst_recall": 0.43042850264805005,
+        "best_recall": 0.43042850264805005,
+        "expected_lift": 21.521425132402506
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2394607,
+        "expected_recall": 0.6100144439094848,
+        "worst_recall": 0.6100144439094848,
+        "best_recall": 0.6100144439094848,
+        "expected_lift": 12.200288878189696
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2394607,
+        "expected_recall": 0.7465093885411651,
+        "worst_recall": 0.7465093885411651,
+        "best_recall": 0.7465093885411651,
+        "expected_lift": 7.465093885411652
+      }
+    ]
+  },
+  "xgb_full_plus_hist__test_rate_train_blocks__seen_blocks": {
+    "n": 2025644,
+    "fires": 3436,
+    "roc_auc": 0.9363838518723716,
+    "pr_auc": 0.10420444222321835,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2026,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.14755529685681024,
+        "worst_recall": 0.14755529685681024,
+        "best_recall": 0.14755529685681024,
+        "expected_lift": 147.52936907513154
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 10128,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.29540162980209544,
+        "worst_recall": 0.29540162980209544,
+        "best_recall": 0.29540162980209544,
+        "expected_lift": 59.081609300832916
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 20256,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.36961583236321305,
+        "worst_recall": 0.36961583236321305,
+        "best_recall": 0.36961583236321305,
+        "expected_lift": 36.96238611431419
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 40513,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.4691501746216531,
+        "worst_recall": 0.4691501746216531,
+        "best_recall": 0.4691501746216531,
+        "expected_lift": 23.45743924965576
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 101282,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.6458090803259604,
+        "worst_recall": 0.6458090803259604,
+        "best_recall": 0.6458090803259604,
+        "expected_lift": 12.916207111903395
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 202564,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.80034924330617,
+        "worst_recall": 0.80034924330617,
+        "best_recall": 0.80034924330617,
+        "expected_lift": 8.003508237434506
+      }
+    ]
+  },
+  "xgb_full_plus_hist__test_rate_all_blocks__all_test": {
+    "n": 2522200,
+    "fires": 4154,
+    "roc_auc": 0.9325973819086951,
+    "pr_auc": 0.09408620497750393,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2395816,
+        "expected_recall": 0.13818006740491093,
+        "worst_recall": 0.13818006740491093,
+        "best_recall": 0.13818006740491093,
+        "expected_lift": 138.19102538012146
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2395816,
+        "expected_recall": 0.2782859894077997,
+        "worst_recall": 0.2782859894077997,
+        "best_recall": 0.2782859894077997,
+        "expected_lift": 55.657197881559945
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2395816,
+        "expected_recall": 0.36181993259508904,
+        "worst_recall": 0.36181993259508904,
+        "best_recall": 0.36181993259508904,
+        "expected_lift": 36.18199325950891
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2395816,
+        "expected_recall": 0.4655753490611459,
+        "worst_recall": 0.4655753490611459,
+        "best_recall": 0.4655753490611459,
+        "expected_lift": 23.278767453057295
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2395816,
+        "expected_recall": 0.642513240250361,
+        "worst_recall": 0.642513240250361,
+        "best_recall": 0.642513240250361,
+        "expected_lift": 12.850264805007221
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 2395816,
+        "expected_recall": 0.7864708714492056,
+        "worst_recall": 0.7864708714492056,
+        "best_recall": 0.7864708714492056,
+        "expected_lift": 7.864708714492055
+      }
+    ]
+  },
+  "xgb_full_plus_hist__test_rate_all_blocks__seen_blocks": {
+    "n": 2025644,
+    "fires": 3436,
+    "roc_auc": 0.9363838518723716,
+    "pr_auc": 0.10420444222321835,
+    "tie_aware": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2026,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.14755529685681024,
+        "worst_recall": 0.14755529685681024,
+        "best_recall": 0.14755529685681024,
+        "expected_lift": 147.52936907513154
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 10128,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.29540162980209544,
+        "worst_recall": 0.29540162980209544,
+        "best_recall": 0.29540162980209544,
+        "expected_lift": 59.081609300832916
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 20256,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.36961583236321305,
+        "worst_recall": 0.36961583236321305,
+        "best_recall": 0.36961583236321305,
+        "expected_lift": 36.96238611431419
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 40513,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.4691501746216531,
+        "worst_recall": 0.4691501746216531,
+        "best_recall": 0.4691501746216531,
+        "expected_lift": 23.45743924965576
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 101282,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.6458090803259604,
+        "worst_recall": 0.6458090803259604,
+        "best_recall": 0.6458090803259604,
+        "expected_lift": 12.916207111903395
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 202564,
+        "tied_at_cutoff": 1,
+        "distinct_scores": 1942102,
+        "expected_recall": 0.80034924330617,
+        "worst_recall": 0.80034924330617,
+        "best_recall": 0.80034924330617,
+        "expected_lift": 8.003508237434506
+      }
+    ]
+  },
+  "shap_top12": {
+    "hist_rate": 1.0108875036239624,
+    "pct_21": 0.7534522414207458,
+    "ndvi_7d_mean": 0.6007976531982422,
+    "PS": 0.5934199094772339,
+    "pct_22": 0.38191571831703186,
+    "pct_52": 0.2756841480731964,
+    "pct_90": 0.22738739848136902,
+    "RH2M": 0.20298586785793304,
+    "pct_23": 0.17187847197055817,
+    "PRECTOT_7d_sum": 0.1714249700307846,
+    "pct_82": 0.17093099653720856,
+    "WS10M_3d_max": 0.1509755700826645
+  },
+  "boot xgb_full_plus_hist__test_rate_train_blocks - hist_model_rows_train_blocks": {
+    "pr_auc_diff_ci95": [
+      -0.011934630548942341,
+      0.005485177439866268
+    ],
+    "top10_recall_diff_ci95": [
+      0.008244131148831666,
+      0.12035826649233894
+    ]
+  },
+  "boot xgb_full_plus_hist__test_rate_all_blocks - hist_model_rows_all_blocks": {
+    "pr_auc_diff_ci95": [
+      -0.01717485167753933,
+      -9.234238963441859e-05
+    ],
+    "top10_recall_diff_ci95": [
+      -0.02434152903872064,
+      0.010555248421555414
+    ]
+  },
+  "boot xgb_full_plus_hist__test_rate_all_blocks - xgb_full": {
+    "pr_auc_diff_ci95": [
+      -0.0016580458049911238,
+      0.024249719591237152
+    ],
+    "top10_recall_diff_ci95": [
+      0.020339216404440568,
+      0.04811510677772081
+    ]
+  },
+  "boot hist_model_rows_all_blocks - xgb_full": {
+    "pr_auc_diff_ci95": [
+      0.0052801475647447855,
+      0.03606911227013417
+    ],
+    "top10_recall_diff_ci95": [
+      0.01848687376464313,
+      0.05694079077952129
+    ]
+  }
+}

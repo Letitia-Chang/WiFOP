@@ -10,6 +10,7 @@ models/*.cbm
 *.pkl
 *.h5
 *.pt
+*.npy
 
 # Notebook checkpoints
 .ipynb_checkpoints/

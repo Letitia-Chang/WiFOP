@@ -1,0 +1,14 @@
+{
+  "model": "catboost",
+  "trials": 25,
+  "best_params": {
+    "learning_rate": 0.05136708720672071,
+    "depth": 5,
+    "iterations": 600,
+    "l2_leaf_reg": 9.299733664213415
+  },
+  "spatial_val_roc_auc": 0.9127431107794295,
+  "spatial_val_pr_auc": 0.04864903418002012,
+  "test_2023_roc_auc": 0.9301774526224514,
+  "test_2023_pr_auc": 0.08310301090654248
+}

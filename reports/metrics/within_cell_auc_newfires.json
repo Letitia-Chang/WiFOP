@@ -1,0 +1,255 @@
+{
+  "weighted": {
+    "overall_auc": 0.9038780644601686,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5538368814035831,
+      "fire_weighted_auc": 0.5537440127273974,
+      "mean_group_auc_ci95_groups": [
+        0.5409596356457762,
+        0.5671030684327851
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5398356778750014,
+      "fire_weighted_auc": 0.5417204842828993,
+      "mean_group_auc_ci95_groups": [
+        0.5257589704849717,
+        0.5530567289702222
+      ]
+    }
+  },
+  "catboost": {
+    "overall_auc": 0.8993373617470272,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5479294437733926,
+      "fire_weighted_auc": 0.5495402594125021,
+      "mean_group_auc_ci95_groups": [
+        0.5349168648940691,
+        0.5632107642339105
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.536963619126873,
+      "fire_weighted_auc": 0.5393768022486655,
+      "mean_group_auc_ci95_groups": [
+        0.524579936252151,
+        0.5496388500630185
+      ]
+    }
+  },
+  "rf": {
+    "overall_auc": 0.8983367386769114,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.539452104794768,
+      "fire_weighted_auc": 0.5424200826541254,
+      "mean_group_auc_ci95_groups": [
+        0.5272740456193884,
+        0.5515070402463387
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5278775114839943,
+      "fire_weighted_auc": 0.5313054333269929,
+      "mean_group_auc_ci95_groups": [
+        0.5152866180543633,
+        0.5393641089303032
+      ]
+    }
+  },
+  "ablation_full": {
+    "overall_auc": 0.9045033927103632,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5523785640581029,
+      "fire_weighted_auc": 0.554999066121049,
+      "mean_group_auc_ci95_groups": [
+        0.5393612272241101,
+        0.5670067515566601
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5456393468685814,
+      "fire_weighted_auc": 0.5485156715621721,
+      "mean_group_auc_ci95_groups": [
+        0.5337742942543503,
+        0.5586699918398391
+      ]
+    }
+  },
+  "ablation_no_land_cover": {
+    "overall_auc": 0.8256606012579941,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5302161836603166,
+      "fire_weighted_auc": 0.5317072174894102,
+      "mean_group_auc_ci95_groups": [
+        0.5174312662639811,
+        0.5408958500856377
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5287203189000166,
+      "fire_weighted_auc": 0.5309947518359859,
+      "mean_group_auc_ci95_groups": [
+        0.5169409267093998,
+        0.5408946185660156
+      ]
+    }
+  },
+  "ablation_land_cover_only": {
+    "overall_auc": 0.903214022163422,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5,
+      "fire_weighted_auc": 0.5,
+      "mean_group_auc_ci95_groups": [
+        0.5,
+        0.5
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5,
+      "fire_weighted_auc": 0.5,
+      "mean_group_auc_ci95_groups": [
+        0.5,
+        0.5
+      ]
+    }
+  },
+  "ablation_weather_plus_fires": {
+    "overall_auc": 0.7066846772097919,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5149853191137469,
+      "fire_weighted_auc": 0.5156339890869421,
+      "mean_group_auc_ci95_groups": [
+        0.5034240685575343,
+        0.5256272829636464
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5137175181076353,
+      "fire_weighted_auc": 0.5145076316168411,
+      "mean_group_auc_ci95_groups": [
+        0.5013449041335626,
+        0.5249300073279775
+      ]
+    }
+  },
+  "ablation_weather_only": {
+    "overall_auc": 0.7059547218264373,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5126979851208174,
+      "fire_weighted_auc": 0.5118607955189575,
+      "mean_group_auc_ci95_groups": [
+        0.5010983126800626,
+        0.5243755330949047
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5031675786526095,
+      "fire_weighted_auc": 0.503909102724081,
+      "mean_group_auc_ci95_groups": [
+        0.4894613505849903,
+        0.5152756502474453
+      ]
+    }
+  },
+  "ablation_fires_only": {
+    "overall_auc": 0.5,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5,
+      "fire_weighted_auc": 0.5,
+      "mean_group_auc_ci95_groups": [
+        0.5,
+        0.5
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5,
+      "fire_weighted_auc": 0.5,
+      "mean_group_auc_ci95_groups": [
+        0.5,
+        0.5
+      ]
+    }
+  },
+  "hist_model_rows_all_blocks": {
+    "overall_auc": 0.859564827133705,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5,
+      "fire_weighted_auc": 0.5,
+      "mean_group_auc_ci95_groups": [
+        0.5,
+        0.5
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5,
+      "fire_weighted_auc": 0.5,
+      "mean_group_auc_ci95_groups": [
+        0.5,
+        0.5
+      ]
+    }
+  },
+  "xgb_full_plus_hist__test_rate_all_blocks": {
+    "overall_auc": 0.9115124661625105,
+    "within_cell": {
+      "groups": 1749,
+      "fires": 2562,
+      "mean_group_auc": 0.5469110918217619,
+      "fire_weighted_auc": 0.5445035199018415,
+      "mean_group_auc_ci95_groups": [
+        0.5325402899023861,
+        0.5597854737393195
+      ]
+    },
+    "within_cell_month": {
+      "groups": 2410,
+      "fires": 2561,
+      "mean_group_auc": 0.5302035050463341,
+      "fire_weighted_auc": 0.5305623824453568,
+      "mean_group_auc_ci95_groups": [
+        0.5169318418534694,
+        0.5419640346637852
+      ]
+    }
+  }
+}

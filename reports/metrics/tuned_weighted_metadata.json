@@ -1,0 +1,16 @@
+{
+  "model": "weighted",
+  "trials": 25,
+  "best_params": {
+    "learning_rate": 0.03281186402470287,
+    "max_depth": 3,
+    "n_estimators": 300,
+    "subsample": 0.8478753917364792,
+    "colsample_bytree": 0.925117987632385,
+    "min_child_weight": 10
+  },
+  "spatial_val_roc_auc": 0.9081204613556049,
+  "spatial_val_pr_auc": 0.052835700427842,
+  "test_2023_roc_auc": 0.9268335753334863,
+  "test_2023_pr_auc": 0.08471222567790261
+}

@@ -1,0 +1,458 @@
+[
+  {
+    "ablation": "full",
+    "features": [
+      "PRECTOTCORR",
+      "PS",
+      "RH2M",
+      "T2M",
+      "WS10M",
+      "PRECTOT_7d_sum",
+      "T2M_3d_mean",
+      "RH2M_3d_min",
+      "WS10M_3d_max",
+      "ndvi",
+      "ndvi_7d_mean",
+      "fires_last_7d",
+      "fires_last_14d",
+      "pct_11",
+      "pct_12",
+      "pct_21",
+      "pct_22",
+      "pct_23",
+      "pct_24",
+      "pct_31",
+      "pct_41",
+      "pct_42",
+      "pct_43",
+      "pct_52",
+      "pct_71",
+      "pct_81",
+      "pct_82",
+      "pct_90",
+      "pct_95"
+    ],
+    "test_roc_auc": 0.9281042978870231,
+    "test_pr_auc": 0.08091832479156218,
+    "top_k_table": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "fires_caught": 553,
+        "fires_total": 4154,
+        "recall": 0.13312469908521907,
+        "precision": 0.21927042030134813,
+        "lift": 133.1352561588975
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "fires_caught": 1141,
+        "fires_total": 4154,
+        "recall": 0.2746750120365912,
+        "precision": 0.09047656807548965,
+        "lift": 54.935002407318244
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "fires_caught": 1457,
+        "fires_total": 4154,
+        "recall": 0.35074626865671643,
+        "precision": 0.057767028784394575,
+        "lift": 35.07462686567164
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "fires_caught": 1867,
+        "fires_total": 4154,
+        "recall": 0.4494463168030814,
+        "precision": 0.037011339306954244,
+        "lift": 22.472315840154067
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "fires_caught": 2511,
+        "fires_total": 4154,
+        "recall": 0.6044776119402985,
+        "precision": 0.019911188644833874,
+        "lift": 12.08955223880597
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "fires_caught": 3125,
+        "fires_total": 4154,
+        "recall": 0.7522869523350987,
+        "precision": 0.01238997700420268,
+        "lift": 7.522869523350987
+      }
+    ]
+  },
+  {
+    "ablation": "no_land_cover",
+    "features": [
+      "PRECTOTCORR",
+      "PS",
+      "RH2M",
+      "T2M",
+      "WS10M",
+      "PRECTOT_7d_sum",
+      "T2M_3d_mean",
+      "RH2M_3d_min",
+      "WS10M_3d_max",
+      "ndvi",
+      "ndvi_7d_mean",
+      "fires_last_7d",
+      "fires_last_14d"
+    ],
+    "test_roc_auc": 0.8754740494741884,
+    "test_pr_auc": 0.06777568357733088,
+    "top_k_table": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "fires_caught": 536,
+        "fires_total": 4154,
+        "recall": 0.12903225806451613,
+        "precision": 0.21252973830293417,
+        "lift": 129.04249059885908
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "fires_caught": 1029,
+        "fires_total": 4154,
+        "recall": 0.2477130476649013,
+        "precision": 0.08159543255887718,
+        "lift": 49.542609532980265
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "fires_caught": 1299,
+        "fires_total": 4154,
+        "recall": 0.3127106403466538,
+        "precision": 0.0515026564110697,
+        "lift": 31.271064034665383
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "fires_caught": 1535,
+        "fires_total": 4154,
+        "recall": 0.36952335098700045,
+        "precision": 0.03042978352232178,
+        "lift": 18.476167549350023
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "fires_caught": 1914,
+        "fires_total": 4154,
+        "recall": 0.46076071256620127,
+        "precision": 0.015177226231068115,
+        "lift": 9.215214251324024
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "fires_caught": 2385,
+        "fires_total": 4154,
+        "recall": 0.5741454020221474,
+        "precision": 0.009456030449607486,
+        "lift": 5.741454020221473
+      }
+    ]
+  },
+  {
+    "ablation": "land_cover_only",
+    "features": [
+      "pct_11",
+      "pct_12",
+      "pct_21",
+      "pct_22",
+      "pct_23",
+      "pct_24",
+      "pct_31",
+      "pct_41",
+      "pct_42",
+      "pct_43",
+      "pct_52",
+      "pct_71",
+      "pct_81",
+      "pct_82",
+      "pct_90",
+      "pct_95"
+    ],
+    "test_roc_auc": 0.9231492924932392,
+    "test_pr_auc": 0.07585315634388397,
+    "top_k_table": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "fires_caught": 515,
+        "fires_total": 4154,
+        "recall": 0.12397688974482426,
+        "precision": 0.204203013481364,
+        "lift": 123.9867213776351
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "fires_caught": 991,
+        "fires_total": 4154,
+        "recall": 0.2385652383245065,
+        "precision": 0.07858219015145508,
+        "lift": 47.7130476649013
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "fires_caught": 1304,
+        "fires_total": 4154,
+        "recall": 0.31391429947039,
+        "precision": 0.05170089604313694,
+        "lift": 31.391429947038997
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "fires_caught": 1700,
+        "fires_total": 4154,
+        "recall": 0.4092441020702937,
+        "precision": 0.03370073745143129,
+        "lift": 20.462205103514684
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "fires_caught": 2425,
+        "fires_total": 4154,
+        "recall": 0.5837746750120366,
+        "precision": 0.01922924431052256,
+        "lift": 11.675493500240732
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "fires_caught": 3037,
+        "fires_total": 4154,
+        "recall": 0.7311025517573423,
+        "precision": 0.012041075251764333,
+        "lift": 7.311025517573423
+      }
+    ]
+  },
+  {
+    "ablation": "weather_plus_fires",
+    "features": [
+      "PRECTOTCORR",
+      "RH2M",
+      "T2M",
+      "WS10M",
+      "PRECTOT_7d_sum",
+      "T2M_3d_mean",
+      "RH2M_3d_min",
+      "WS10M_3d_max",
+      "fires_last_7d",
+      "fires_last_14d"
+    ],
+    "test_roc_auc": 0.7956886230058514,
+    "test_pr_auc": 0.06161825191350519,
+    "top_k_table": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "fires_caught": 518,
+        "fires_total": 4154,
+        "recall": 0.12469908521906596,
+        "precision": 0.20539254559873116,
+        "lift": 124.70897412352424
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "fires_caught": 918,
+        "fires_total": 4154,
+        "recall": 0.2209918151179586,
+        "precision": 0.07279359289509159,
+        "lift": 44.19836302359172
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "fires_caught": 1207,
+        "fires_total": 4154,
+        "recall": 0.2905633124699085,
+        "precision": 0.04785504718103243,
+        "lift": 29.05633124699085
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "fires_caught": 1457,
+        "fires_total": 4154,
+        "recall": 0.35074626865671643,
+        "precision": 0.028883514392197288,
+        "lift": 17.53731343283582
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "fires_caught": 1718,
+        "fires_total": 4154,
+        "recall": 0.41357727491574386,
+        "precision": 0.013623027515660932,
+        "lift": 8.271545498314877
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "fires_caught": 2042,
+        "fires_total": 4154,
+        "recall": 0.4915743861338469,
+        "precision": 0.008096106573626199,
+        "lift": 4.915743861338469
+      }
+    ]
+  },
+  {
+    "ablation": "weather_only",
+    "features": [
+      "PRECTOTCORR",
+      "RH2M",
+      "T2M",
+      "WS10M",
+      "PRECTOT_7d_sum",
+      "T2M_3d_mean",
+      "RH2M_3d_min",
+      "WS10M_3d_max"
+    ],
+    "test_roc_auc": 0.7459217269547296,
+    "test_pr_auc": 0.007116003095898413,
+    "top_k_table": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "fires_caught": 85,
+        "fires_total": 4154,
+        "recall": 0.020462205103514684,
+        "precision": 0.033703409992069784,
+        "lift": 20.463827800192202
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "fires_caught": 262,
+        "fires_total": 4154,
+        "recall": 0.06307173808377467,
+        "precision": 0.020775513440647052,
+        "lift": 12.614347616754934
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "fires_caught": 346,
+        "fires_total": 4154,
+        "recall": 0.08329321136254213,
+        "precision": 0.013718182539053207,
+        "lift": 8.329321136254213
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "fires_caught": 546,
+        "fires_total": 4154,
+        "recall": 0.13143957631198844,
+        "precision": 0.010823883910871461,
+        "lift": 6.571978815599422
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "fires_caught": 897,
+        "fires_total": 4154,
+        "recall": 0.21593644679826673,
+        "precision": 0.0071128379985726745,
+        "lift": 4.318728935965335
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "fires_caught": 1376,
+        "fires_total": 4154,
+        "recall": 0.33124699085219067,
+        "precision": 0.005455554674490524,
+        "lift": 3.3124699085219063
+      }
+    ]
+  },
+  {
+    "ablation": "fires_only",
+    "features": [
+      "fires_last_7d",
+      "fires_last_14d"
+    ],
+    "test_roc_auc": 0.6843134902597329,
+    "test_pr_auc": 0.05707998310120148,
+    "top_k_table": [
+      {
+        "top_k_pct": 0.1,
+        "n_flagged": 2522,
+        "fires_caught": 530,
+        "fires_total": 4154,
+        "recall": 0.12758786711603273,
+        "precision": 0.21015067406819984,
+        "lift": 127.5979851070808
+      },
+      {
+        "top_k_pct": 0.5,
+        "n_flagged": 12611,
+        "fires_caught": 1037,
+        "fires_total": 4154,
+        "recall": 0.24963890226287916,
+        "precision": 0.08222979938149234,
+        "lift": 49.927780452575824
+      },
+      {
+        "top_k_pct": 1.0,
+        "n_flagged": 25222,
+        "fires_caught": 1252,
+        "fires_total": 4154,
+        "recall": 0.3013962445835339,
+        "precision": 0.04963920386963762,
+        "lift": 30.139624458353396
+      },
+      {
+        "top_k_pct": 2.0,
+        "n_flagged": 50444,
+        "fires_caught": 1603,
+        "fires_total": 4154,
+        "recall": 0.3858931150698122,
+        "precision": 0.031777813020379034,
+        "lift": 19.294655753490613
+      },
+      {
+        "top_k_pct": 5.0,
+        "n_flagged": 126110,
+        "fires_caught": 1779,
+        "fires_total": 4154,
+        "recall": 0.428261916225325,
+        "precision": 0.014106732217905003,
+        "lift": 8.565238324506499
+      },
+      {
+        "top_k_pct": 10.0,
+        "n_flagged": 252220,
+        "fires_caught": 1872,
+        "fires_total": 4154,
+        "recall": 0.45064997592681755,
+        "precision": 0.007422091824597574,
+        "lift": 4.506499759268175
+      }
+    ]
+  }
+]
