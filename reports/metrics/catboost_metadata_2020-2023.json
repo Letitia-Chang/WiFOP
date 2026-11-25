@@ -1,15 +1,15 @@
 {
-    "spatial_val_roc_auc": 0.9110754576061839,
-    "spatial_val_auc_pr": 0.04744041597320623,
-    "test_2023_roc_auc": 0.9264802394784437,
-    "test_2023_auc_pr": 0.08440216922598223,
-    "best_threshold": 0.9469170616223258,
-    "num_train_rows": 6000709,
-    "num_val_rows": 1471686,
-    "num_test_rows": 2522200,
-    "train_fire_cases": 9824,
-    "val_fire_cases": 1959,
-    "test_fire_cases": 4154,
+    "spatial_val_roc_auc": 0.9122674064695869,
+    "spatial_val_auc_pr": 0.042288288269392134,
+    "test_2023_roc_auc": 0.9289149211014962,
+    "test_2023_auc_pr": 0.08370582158037254,
+    "best_threshold": 0.950434626190674,
+    "num_train_rows": 5705422,
+    "num_val_rows": 1399772,
+    "num_test_rows": 2368134,
+    "train_fire_cases": 9320,
+    "val_fire_cases": 1854,
+    "test_fire_cases": 3884,
     "features": [
         "PRECTOTCORR",
         "PS",
@@ -45,5 +45,5 @@
         "dry_windy",
         "fuel_moisture_proxy"
     ],
-    "class_weight": 609.8213558631921
+    "class_weight": 611.1697424892703
 }

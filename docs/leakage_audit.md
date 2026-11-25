@@ -354,10 +354,22 @@ been done. Flagged here rather than silently assumed correct; see
 ### Status
 
 All three fixed (6c only partially — see its limitation note) in code and
-covered by regression tests as of this writing. **Not yet re-run through
-the full pipeline** — this is being done together with the item-5 WFIGS
-incident-type fix in one combined rerun (see `docs/results.md` for results
-once available), since isolating each fix's individual numerical
-contribution would roughly double the compute cost for limited portfolio
-value; each fix is independently justified as a correctness fix regardless
-of its measured effect size.
+covered by regression tests as of this writing. **Re-run through the full
+pipeline 2026-11-25**, combined with the item-5 WFIGS incident-type fix in
+one rerun (see `docs/results.md`'s "Final rerun with all leakage fixes
+applied" section for the resulting numbers and caveats) — isolating each
+fix's individual numerical contribution would have roughly doubled the
+compute cost for limited portfolio value; each fix is independently
+justified as a correctness fix regardless of its measured effect size.
+
+Result: the headline finding (historical fire rate beats every trained
+model; the genuine day-to-day skill on top is modest) is unchanged after
+the combined fix. Old-vs-new models on common rows are statistically
+indistinguishable in 7 of 9 paired bootstrap comparisons; the two that
+exclude zero (CatBoost ROC-AUC, Random Forest PR-AUC) are both tiny and not
+treated as material. See `docs/results.md` for the full numbers and the
+caveats that still apply (bundled fixes, different row sets than earlier
+numbers in this document, unlimited NDVI ffill, late-May fire-history
+blind spot, unfixed UTC day-boundary issue, no training-randomness term in
+any CI, and stale baseline/ablation/tuning/within-cell artifacts that still
+reflect the old panel).

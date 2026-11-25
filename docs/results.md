@@ -433,6 +433,94 @@ meaningfully more modest claim than "75% recall at the top 10%" suggested on
 its own, and it wouldn't have been visible without deliberately trying to
 falsify the earlier results.
 
+## Final rerun with all leakage fixes applied (2026-11-25)
+
+The full pipeline (`combine_data.py` → `clean_panel.py` → `panel_check` →
+train all 5 models → operational eval → old-vs-new comparison → bootstrap
+CIs) was rerun on PACE-ICE with every fix from "Bugs found and fixed" above
+plus the three bugs in the "Still open" item below (WFIGS RX-burn filter,
+NDVI `.ffill()`-only, `(grid_id, year)` grouping, `min_periods=1`) applied
+together. **Bottom line: nothing material changed.** The headline finding
+from the critique follow-up above — historical fire rate beats every
+model, and the genuine day-to-day skill on top is modest — survives every
+fix intact.
+
+New panel: 26,032,360 combined rows, clean panel 12,678,380 rows (down
+78,585 from the old panel — exactly 3 × 26,195 grid cells, confirming the
+season-boundary fix removed exactly one undefined last-day-of-season row
+per cell per non-final year, as intended). Model-ready rows: 9,473,328;
+train 5,705,422, spatial-val 1,399,772, test 2,368,134 (3,884 fires, base
+rate 0.164%, down from 2,522,200 rows / 4,154 fires / 0.1647% on the old
+panel — early-June rows and cells with no earlier same-season NDVI reading
+now correctly drop out instead of being filled from a leak).
+
+| Model | ROC-AUC | PR-AUC | Recall@10% | Lift@10% | 95% CI (PR-AUC) |
+|---|---|---|---|---|---|
+| Weighted XGBoost | 0.9297 | 0.0872 | 0.759 | 7.59x | [0.0263, 0.1328] |
+| CatBoost | 0.9289 | 0.0837 | 0.759 | 7.59x | [0.0254, 0.1283] |
+| Random Forest | 0.9240 | 0.0720 | 0.751 | 7.51x | [0.0228, 0.1112] |
+| SMOTE XGBoost | 0.9054 | 0.0587 | 0.687 | 6.87x | [0.0119, 0.1047] |
+| SVM | 0.8773 | 0.0126 | 0.608 | 6.08x | no CI (not computed for SVM) |
+
+**Common-rows comparison (same new rows/labels; old models scored
+unchanged on them — this is a transfer test for the old models, since they
+were trained on the old leaky NDVI and old labels):**
+
+| Model | ROC-AUC old→new | PR-AUC old→new | Recall@10% old→new |
+|---|---|---|---|
+| Weighted XGBoost | 0.9286 → 0.9297 | 0.0841 → 0.0872 | 0.757 → 0.759 |
+| CatBoost | 0.9274 → 0.9289 | 0.0863 → 0.0837 | 0.759 → 0.759 |
+| Random Forest | 0.9251 → 0.9240 | 0.0662 → 0.0720 | 0.754 → 0.751 |
+| Historical rate baseline (new panel) | 0.9029 | 0.1040 | 0.791 |
+
+Paired block-bootstrap, new model minus old model (95% CI; no
+multiple-comparison correction): only 2 of 9 intervals exclude zero —
+CatBoost ROC-AUC (≈ +0.0015) and Random Forest PR-AUC (≈ +0.006) — both
+tiny, and this doesn't account for training randomness (single fit per
+model), so neither is treated as a material improvement. Historical rate
+still beats every retrained model by a wide, clearly-significant margin
+(e.g. PR-AUC higher by +0.0045 to +0.0328 depending on model; ROC-AUC
+*lower* by 0.011–0.040, since a simple rate baseline can't produce a
+ranking as sharp as a trained model even while still winning on PR-AUC —
+expected for a 0.16% base-rate problem, see the critique-follow-up section
+above for why PR-AUC/top-k, not ROC-AUC, is the metric that matters here).
+
+RF SHAP ordering on the new panel is essentially unchanged from before:
+`pct_21`, `pct_22`, `pct_23`, `PS`, `ndvi_7d_mean`, `pct_52`, `pct_24` in
+the same order, with only `fires_last_14d` and `pct_71` swapping ranks —
+the land-cover/NDVI-dominant feature-importance story from the critique
+follow-up also survives the rerun.
+
+**Caveats on this comparison (do not drop these when citing the numbers
+above):**
+1. All four fixes (RX-incident filter, NDVI `.ffill()`, `(grid_id, year)`
+   grouping, `min_periods=1`) are bundled into one rerun — no observed
+   change can be attributed to any single fix.
+2. Row sets and labels differ from every number reported earlier in this
+   document (test 2,522,200→2,368,134 rows, 4,154→3,884 fires; train
+   6,000,709→5,705,422 rows) — comparisons against the pre-fix numbers in
+   this file are rough, not apples-to-apples.
+3. NDVI forward-fill is now unlimited — a cell with no NDVI reading for
+   weeks still carries a stale value forward indefinitely.
+4. Fire history (`fires_last_7d/14d`) still can't see fires in the
+   gap-month before a season starts (e.g. late May), so it's partly blind
+   for the first few days of every June — the partial-fix caveat from
+   "Still open" below.
+5. The UTC-vs-local day-boundary mismatch between fire labels and weather
+   data (same item below) remains unfixed.
+6. Single fit per model — no training-randomness component in any
+   confidence interval here. The old SMOTE and SVM models weren't
+   available for the common-rows comparison, and the old-label retrain (to
+   isolate the package-version change from the data fixes) was skipped as
+   a compute-cost tradeoff.
+7. **Stale, not regenerated in this rerun:** `baseline_results`,
+   `baseline_tie_aware`, `ablation_land_cover`, `ablation_strict`,
+   `hist_feature`, `within_cell_auc*`, and `tuned_*` metrics/figures
+   (including the "within-cell" result discussed in the critique
+   follow-up above) were all produced on the **old, pre-fix panel**. Treat
+   every number in the "Critique follow-up" section above as describing
+   the old panel, not this rerun, until those are regenerated.
+
 ## Still open
 
 - ~~The grid-generation duplication and NDVI-pipeline duplication
@@ -469,8 +557,8 @@ falsify the earlier results.
   incident type, so **2.45% of the 49,539 "fire" labels this whole project
   has used are prescribed burns (RX), not wildfires**. Fixed in
   `scripts/download_irwin_wfigs.py` (now filters `IncidentTypeCategory='WF'`)
-  — **not yet re-run through the full pipeline/retrain**, so this doesn't
-  change any number reported elsewhere in this document yet.
+  — **re-run through the full pipeline/retrain 2026-11-25; see 'Final
+  rerun' section above for the resulting numbers.**
 - ~~**No reproducibility harness.**~~ **Done.** `environment.yml` and
   `requirements.txt` pin the exact package versions this project was run
   with. The leakage-critical logic in `clean_panel.py` was pulled out into
@@ -499,7 +587,8 @@ falsify the earlier results.
   either way, just flagged as a plausible connection worth re-checking
   once the pipeline is rerun.
 - **Three more real bugs found while preparing the WFIGS-fix rerun
-  (2026-11-25), fixed in code (one only partially), neither yet re-run:**
+  (2026-11-25), fixed in code (one only partially), now re-run (see 'Final
+  rerun' section above):**
   (1) the earlier NDVI "forward-only" fix (#3) didn't actually hold for
   interior gaps — `limit_direction="forward"` doesn't make interior
   interpolation forward-only in pandas, only extrapolation at the edges
