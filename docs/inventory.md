@@ -19,8 +19,8 @@ Author column is from `git log -1 --format=%an -- <path>` in the team repo (blan
 
 | New path | Source | Purpose | Inputs | Outputs | Author | Needed going forward? |
 |---|---|---|---|---|---|---|
-| `scripts/make_grid.py` | solo repo `src/make_grid.py` | Build the 5 km CA grid | CA boundary | `california_grid_5km.csv` | Letitia | Yes — canonical grid builder |
-| `src/grid_generation.py` | team `src/grid_generation.py` | Alternate/later grid-generation script | — | grid csv | Letitia | Check for duplication with `make_grid.py`; keep one |
+| `scripts/make_grid.py` | solo repo `src/make_grid.py` | Earlier grid-generation attempt: 0.1°×0.1° (~11km) rectangular polygons in raw EPSG:4326 | CA boundary | GeoJSON polygons | Letitia | **No — correcting an earlier wrong label in this table.** Confirmed by diff (2026-11-25, see "Open questions" below): doesn't match `data/california_grid_5km.csv`'s actual schema (`grid_id,centroid_lat,centroid_lon`) or the 5km equal-area grid the rest of the pipeline assumes. Superseded by `src/grid_generation.py` |
+| `src/grid_generation.py` | team `src/grid_generation.py` | **Canonical grid builder.** True 5km×5km cells via an equal-area projection (EPSG:3310), centroids reprojected back to WGS84 | CA boundary | `california_grid_5km.csv` | Letitia | Yes — confirmed canonical (2026-11-25): its output columns (`grid_id,centroid_lat,centroid_lon`) exactly match the real `california_grid_5km.csv` on disk and what `clean_panel.py`'s `GRID_FILE` expects |
 | `scripts/download_NASA_POWER.py` | solo repo | Download NASA POWER weather by tile/date | NASA POWER API | raw weather CSVs | Letitia | Yes |
 | `scripts/clean_data_NASA_POWER.py` | solo repo | Clean/reshape NASA POWER tiles | raw POWER CSVs | cleaned weather CSV | Letitia | Yes |
 | `scripts/download_api_era5.py` | solo repo | ERA5 weather download (abandoned alt. to NASA POWER) | ERA5 API | raw ERA5 | Letitia | No — superseded by NASA POWER; keep for the "what didn't work" note only |
@@ -30,12 +30,12 @@ Author column is from `git log -1 --format=%an -- <path>` in the team repo (blan
 | `src/fire_labels/IRWIN.py` | team `src/fire labels/IRWIN.py` | Pull/parse IRWIN fire incident records (the label source) | IRWIN API/export | `irwin.csv` | Xiaoyi Huang | No — superseded by `scripts/download_irwin_wfigs.py`. This script expected a pre-exported `irwin_2023-07.csv` of unknown origin and only covered one month; the public NIFC WFIGS FeatureServer (IRWIN-backed, no account needed) covers the full 2020-2023 range directly. Label semantics audited 2026-11-25, see `docs/leakage_audit.md` section 5: `date` is discovery date (no ignition-date field exists in WFIGS at all); also found and fixed a real bug — the download wasn't filtering `IncidentTypeCategory`, so 2.45% of the 49,539 rows were prescribed burns (RX), not wildfires. Fix not yet re-run through the full pipeline |
 | `src/fire_labels/FIRMS_data.py` | team `src/fire labels/FIRMS data.py` | Pull FIRMS fire detections (secondary/cross-check) | FIRMS API | FIRMS csv | Xiaoyi Huang | Maybe — cross-validation of labels only |
 | `src/fire_labels/fire_data.py` | team `src/fire labels/fire data.py` | Combine/clean fire label sources | IRWIN/FIRMS raw | fire label table | Xiaoyi Huang | Yes, pending review |
-| `src/ndvi_pipeline.py` | team repo | Main NDVI pipeline (fetch + daily interpolation, rolling means, drop flags) | NDVI source rasters/API | `ndvi.csv` | Diyang Pang | No — superseded by `scripts/download_ndvi.py` for acquisition (same NOAA VIIRS CDR source, but fetched via HTTP byte-range so only the CA slice of each ~64MB global file is pulled, and matches both the pre-2023 and 2023+ satellite naming). The look-ahead interpolation this script's `clean_panel.py`-style gap-filling might have is moot for the new download path (no gap-filling performed), but still worth reviewing if this script is ever revived |
-| `src/ndvi_pipeline_processing/clean_ndvi.py` | team repo | NDVI cleaning helper | raw NDVI | cleaned NDVI | Diyang Pang | Yes, pending review |
-| `src/ndvi_pipeline_processing/ndvi_pipeline2.py` | team repo | Second NDVI pipeline variant | raw NDVI | `ndvi.csv` variant | Diyang Pang | Check which NDVI pipeline is canonical |
+| `src/ndvi_pipeline.py` | team repo | Earlier NDVI pipeline version, scoped to July-Sept 2023 only (`setting.json`), single-satellite-naming regex | NDVI source rasters/API | `ndvi.csv` | Diyang Pang | No — superseded by `scripts/download_ndvi.py` for acquisition (same NOAA VIIRS CDR source, but fetched via HTTP byte-range so only the CA slice of each ~64MB global file is pulled, and matches both the pre-2023 and 2023+ satellite naming). Confirmed by diff (2026-11-25, see "Open questions" below): this script's hardcoded `JP113C1_NOAA-20`-only regex is the exact same single-satellite-naming bug independently found and fixed in this rework's own download script — it would have silently found 0 files for 2020-2022 |
+| `src/ndvi_pipeline_processing/clean_ndvi.py` | team repo | NDVI cleaning helper for `ndvi_pipeline2.py`'s per-year output; rolling NDVI means + gap interpolation | raw NDVI | cleaned NDVI | Diyang Pang | No — not used by this rework (superseded by `src/clean_panel.py`'s NDVI handling). Confirmed by diff (2026-11-25): has the same two leakage patterns independently found and fixed in `clean_panel.py` — `.rolling()` without `shift(1)` (docs/leakage_audit.md #2) and bidirectional gap interpolation (`limit_direction="both"`, same future-leak as #3). Not a bug to fix since unused, but confirms the pattern recurred across the original team's scripts, not a one-off |
+| `src/ndvi_pipeline_processing/ndvi_pipeline2.py` | team repo | Later NDVI pipeline version: extended to all 4 years (2020-2023), broader satellite-naming regex | raw NDVI | per-year `ndvi_<year>_6_9.csv` | Diyang Pang | No — not used by this rework, superseded by `scripts/download_ndvi.py`. Confirmed by diff (2026-11-25, see "Open questions" below): this is a direct evolution of `ndvi_pipeline.py` by the same team, not an unrelated duplicate — its output filenames match what `clean_ndvi.py` expects as input |
 | `src/ndvi_pipeline_processing/setting.json`, `src/setting.json` | team repo | Config (paths/params) for NDVI pipeline | — | — | Diyang Pang | Yes, as config |
 | `src/SRTM_NLCD/nlcd_composition.py` (was `2023_NLCD.py`) | team repo, rewritten | NLCD land-cover fraction extraction per grid cell, now per year (2020-2023) from Annual NLCD | per-year NLCD raster tiles | `nlcd_1km_CA_composition_<year>.csv` | Yini Li (rewrite: Letitia) | Yes — done |
-| `src/SRTM_NLCD/slope_aspect.py` | team repo | SRTM-derived slope/aspect features | SRTM DEM | slope/aspect csv | Yini Li | Unused in final feature list (not in `feature_cols` of training scripts) — confirm before dropping |
+| `src/SRTM_NLCD/slope_aspect.py` | team repo | SRTM-derived slope/aspect features | SRTM DEM | slope/aspect csv | Yini Li | No — confirmed unused (2026-11-25): `grep` across `combine_data.py`/`clean_panel.py`/`features.py` finds no reference to slope or aspect anywhere in the active pipeline |
 | `src/combine_data.py` | team repo, rewritten | Joins NASA/NDVI/IRWIN/NLCD onto the grid×date panel; builds `fire_today` | real `nasa.csv`, `ndvi.csv`, `irwin.csv`, per-year `nlcd_1km_CA_composition_<year>.csv`, grid (all 2020-2023) | `california_5km_daily_panel_2020-2023.csv` (26M rows) | Letitia | Yes — done. Also fixed a real bug: the NASA weather join snapped NASA's ~320 coarse station points onto the fine grid instead of the other way around, leaving 99.36% of rows with no weather; now every grid cell is assigned its nearest station. NLCD joins by `(grid_id, year)`. See `docs/results.md` |
 | `src/clean_panel.py` | team repo, rewritten | Filters valid cells, interpolates NDVI, adds rolling weather + fire-history + `fire_tomorrow` label + spatial `block_id` | full 2020-2023 daily panel | `california_5km_training_panel_2020-2023_clean.csv` (12.76M rows) | Letitia | Yes — done, leakage issues fixed (see `docs/leakage_audit.md`), run on real data. See `docs/results.md` |
 
@@ -128,7 +128,50 @@ Checked each external source for newer/more comprehensive versions:
 
 ## Open questions for later steps
 
-1. Which grid-generation script is canonical, `scripts/make_grid.py` (solo) or `src/grid_generation.py` (team)? They need to be diffed before the rewrite.
-2. Two NDVI pipelines exist (`ndvi_pipeline.py` vs. `ndvi_pipeline_processing/ndvi_pipeline2.py`) — need to confirm which one produced the `ndvi.csv` actually used in the final combined dataset.
-3. `slope_aspect.py` output isn't referenced in any training script's `feature_cols` — looks unused in the final model; confirm with teammates' notes before dropping.
+1. ~~Which grid-generation script is canonical, `scripts/make_grid.py` (solo) or `src/grid_generation.py` (team)?~~ **Resolved (2026-11-25), by direct diff, no ambiguity:** they're not actually duplicates of the same thing — `src/grid_generation.py` is canonical and `scripts/make_grid.py` is a different, incompatible, abandoned earlier attempt.
+   - `src/grid_generation.py` builds true 5km×5km cells by projecting to an
+     equal-area CRS (California Albers, EPSG:3310), placing centroids on a
+     regular metric grid, then reprojecting back to WGS84 — outputs
+     `grid_id, centroid_lat, centroid_lon` to CSV. **This exactly matches
+     the schema `clean_panel.py`'s `GRID_FILE`
+     (`data/california_grid_5km.csv`) expects**, confirming it's the one
+     actually in use throughout this rework.
+   - `scripts/make_grid.py` builds a 0.1°×0.1° (~11km, not 5km, and
+     degree-based rather than equal-area-projected) rectangular polygon
+     grid directly in EPSG:4326, with a different ID scheme
+     (`"{i}_{j}"` strings) and a different output format entirely
+     (GeoJSON polygons, not a CSV of point centroids). It's not
+     interchangeable with what the rest of the pipeline expects — this
+     was an earlier, cruder, abandoned approach, not a live alternative
+     that needs reconciling.
+2. ~~Two NDVI pipelines exist (`ndvi_pipeline.py` vs. `ndvi_pipeline2.py`)~~ **Resolved (2026-11-25), by direct diff:** they're sequential versions by the same author, not independent duplicates, and **neither is used by this rework** (both superseded by `scripts/download_ndvi.py`) — this is purely historical/archival now.
+   - `src/ndvi_pipeline.py` is the earlier version: its `setting.json`
+     scopes it to `2023-07-01`..`2023-09-30` only, and its VIIRS filename
+     regex hardcodes `JP113C1_NOAA-20` (the 2023+ satellite naming) —
+     **the exact same single-satellite-naming bug independently found and
+     fixed in this rework's own `scripts/download_ndvi.py`** (see
+     `docs/results.md`'s pipeline bug list). Run against 2020-2022 data,
+     this script would have silently returned 0 NDVI files, just like our
+     own first attempt did.
+   - `src/ndvi_pipeline_processing/ndvi_pipeline2.py` is the later,
+     already-partially-fixed version: hardcoded `YEAR_DIRS` for all four
+     years 2020-2023, and a broader regex
+     (`VIIRS-Land_v001_.*_(\d{8})_.*\.nc$`) that matches both satellite
+     naming conventions. Its sibling
+     `ndvi_pipeline_processing/clean_ndvi.py` expects per-year input files
+     (`ndvi_2020_6_9.csv`, etc.) matching `ndvi_pipeline2.py`'s output,
+     confirming the two form one later pipeline, not two unrelated
+     scripts.
+   - **Bonus finding, informative but not actionable** (neither script
+     runs in this rework): `clean_ndvi.py` has the *same two leakage
+     patterns* independently found and fixed in `clean_panel.py` —
+     `ndvi_7d_mean`/`ndvi_21d_mean` are `.rolling()` without a `shift(1)`
+     first (same inclusivity issue as `docs/leakage_audit.md` #2), and its
+     gap-fill interpolation uses `limit_direction="both"` (same
+     future-leak issue as `docs/leakage_audit.md` #3). This isn't a bug to
+     fix (the script isn't used), but it's a useful confirmation that
+     these weren't one-off mistakes in a single file — the same
+     leakage-prone pandas defaults recurred across the original team's
+     independent pipeline attempts.
+3. ~~`slope_aspect.py` output isn't referenced in any training script's `feature_cols`~~ **Resolved (2026-11-25):** confirmed via `grep` across `combine_data.py`/`clean_panel.py`/`features.py` — no reference to slope or aspect anywhere in the active pipeline. Safe to leave dropped; not revisited.
 4. ~~The `combine_data.py` / `clean_panel.py` pair in this repo writes/reads filenames ending in `_2023-07`...~~ **Resolved (2026-11-23):** both scripts are rewritten and have now been run end-to-end on real data for the full 2020–2023 range (filenames now end in `_2020-2023`) — see `docs/results.md`. The original team's full-scale script that produced the slide results was never found; this rewrite is a new full-scale pipeline, not a recovery of the original one, so the two aren't guaranteed to match exactly (different NLCD vintage handling, different data-acquisition paths, and the leakage fixes).

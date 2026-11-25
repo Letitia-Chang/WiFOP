@@ -435,9 +435,22 @@ falsify the earlier results.
 
 ## Still open
 
-- The grid-generation duplication and NDVI-pipeline duplication questions
-  from `docs/inventory.md`'s open questions are unrelated to this run and
-  still unresolved.
+- ~~The grid-generation duplication and NDVI-pipeline duplication
+  questions~~ **Resolved (2026-11-25); see `docs/inventory.md`'s "Open
+  questions" section for the full writeup.** Both turned out to be
+  resolvable by directly diffing the files rather than needing the
+  original team's git history: `src/grid_generation.py` (not
+  `scripts/make_grid.py`, which this table had mislabeled as canonical) is
+  the real grid builder — confirmed by its output columns matching
+  `california_grid_5km.csv` exactly. The two NDVI pipelines are sequential
+  versions by the same author (`ndvi_pipeline2.py` extends
+  `ndvi_pipeline.py` to all 4 years with a broader satellite-naming
+  regex), not independent duplicates, and neither is used by this rework.
+  Bonus finding: the unused `clean_ndvi.py` has the same two leakage
+  patterns (rolling-window inclusivity, bidirectional interpolation)
+  independently found and fixed in `clean_panel.py` — confirms those
+  weren't one-off mistakes. Also resolved in passing: `slope_aspect.py`'s
+  output is confirmed unused anywhere in the active pipeline.
 - ~~**Code duplication risk.**~~ **Done.** `src/features.py` is now the
   single source of truth for `BASE_FEATURES`/`NONLINEAR_FEATURES`/
   `DATA_PATH`/`TARGET`, imported by all nine scripts that previously
