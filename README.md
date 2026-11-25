@@ -15,11 +15,12 @@ proper spatial/temporal validation, and adds operational evaluation (top-k
 recall, lift, calibration, SHAP) on top of the original modeling work.
 
 **Status:** leakage fixes + full 2020–2023 pipeline rewrite done and run
-end-to-end on real data; see [`docs/results.md`](docs/results.md) for
-metrics. Operational evaluation (top-k recall, lift, calibration, SHAP) and
-a like-for-like PR-AUC comparison against the original numbers are still
-open. See [`docs/inventory.md`](docs/inventory.md) for what was carried
-over from the two source repos and what's been rewritten.
+end-to-end on real data; all five models (XGBoost weighted/SMOTE, CatBoost,
+random forest, linear SVM) trained, operationally evaluated (top-k recall,
+lift, calibration, SHAP), and compared against the original project's
+PR-AUC. See [`docs/results.md`](docs/results.md) for metrics and
+[`docs/inventory.md`](docs/inventory.md) for what was carried over from the
+two source repos and what's been rewritten.
 
 ## Credit
 
@@ -31,5 +32,5 @@ over from the two source repos and what's been rewritten.
 - Modeling (XGBoost, random forest, CatBoost, SVM, MLP/CNN): joint work, see
   `docs/inventory.md` for per-script authorship.
 
-See [`docs/results.md`](docs/results.md) for the current results table.
-Reproduction steps and figures to come; operational evaluation is still open.
+See [`docs/results.md`](docs/results.md) for the full results table and
+operational evaluation. Reproduction steps to come.

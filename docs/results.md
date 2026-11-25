@@ -153,73 +153,100 @@ positives above the vast negative class, but the operational question is
 "if we can only act on the riskiest N% of grid-cell-days, how many fires
 does that actually catch?"
 
+All five models were run through the same evaluation (`src/evaluate_model.py
+--model {weighted,smote,catboost,rf,svm}`, default 20,000-row SHAP sample,
+same 2023 held-out test set). The RF run used `--shap-jobs 16` on PACE-ICE
+(GT's HPC cluster) — `shap.TreeExplainer` on a 300-tree, depth-20 forest was
+too slow single-threaded locally (a 20,000-row serial run was projected at
+~7.6h; splitting rows across 16 processes finished the real run in 31
+minutes). Everything else ran locally.
+
 ### Top-k recall / lift
 
-| Top-k% flagged | Weighted — recall | Weighted — lift | SMOTE — recall | SMOTE — lift |
-|---|---|---|---|---|
-| 0.1% | 12.9% | 129x | 11.0% | 110x |
-| 0.5% | 27.1% | 54x | 18.2% | 36x |
-| 1.0% | 34.9% | 35x | 23.7% | 24x |
-| 2.0% | 44.2% | 22x | 33.0% | 17x |
-| 5.0% | 59.9% | 12x | 49.8% | 10x |
-| 10.0% | 75.1% | 7.5x | 66.9% | 6.7x |
+| Top-k% flagged | Weighted | SMOTE | CatBoost | RF | SVM |
+|---|---|---|---|---|---|
+| 0.1% | 12.9% (129x) | 11.0% (110x) | 13.7% (137x) | 11.6% (116x) | 0.5% (5x) |
+| 0.5% | 27.1% (54x) | 18.2% (36x) | 27.6% (55x) | 23.3% (47x) | 4.8% (10x) |
+| 1.0% | 34.9% (35x) | 23.7% (24x) | 35.2% (35x) | 30.7% (31x) | 10.1% (10x) |
+| 2.0% | 44.2% (22x) | 33.0% (17x) | 44.7% (22x) | 41.2% (21x) | 25.4% (13x) |
+| 5.0% | 59.9% (12x) | 49.8% (10x) | 60.9% (12x) | 59.5% (12x) | 45.6% (9x) |
+| 10.0% | 75.1% (7.5x) | 66.9% (6.7x) | 75.1% (7.5x) | 74.9% (7.5x) | 60.3% (6.0x) |
 
-Flagging just the riskiest 10% of grid-cell-days catches **75%** of all
-fires with the weighted model (7.5x the base fire rate) — a far more
-useful number for an early-warning use case than the 23%/16% recall seen
-in the classification reports at the F1-optimal threshold. The **weighted
-model beats SMOTE at every single top-k level** — SMOTE's synthetic
-minority oversampling doesn't help the ranking here, it just shifts where
-the probability mass sits (see calibration below).
-Figures: `reports/figures/topk_lift_weighted.png`,
-`reports/figures/topk_lift_smote.png`.
+Figures are the recall/lift values; parenthesized lift as before.
+
+Flagging just the riskiest 10% of grid-cell-days catches **~75%** of all
+fires with any of the three best models (weighted XGBoost, CatBoost, RF) —
+a far more useful number for an early-warning use case than the 20-30%
+recall seen in the classification reports at the F1-optimal threshold.
+**CatBoost and weighted XGBoost are essentially tied and both lead RF and
+SMOTE at every top-k level**; the linear SVM is a clear laggard throughout,
+consistent with it also having the weakest ROC-AUC/PR-AUC of the five.
+Figures: `reports/figures/topk_lift_{weighted,smote,catboost,rf,svm}.png`.
 
 ### Calibration
 
 | Model | Brier score |
 |---|---|
-| Weighted | 0.0696 |
 | SMOTE | 0.0264 |
+| RF | 0.0227 |
+| Weighted | 0.0696 |
+| CatBoost | 0.0855 |
+| SVM | 0.1664 |
 
-SMOTE's lower Brier score is misleading on its own — Brier score rewards
-predicting probabilities close to the (tiny) true base rate everywhere,
-which a model that's worse at *ranking* can still do if its probabilities
-are more conservative on average. Given SMOTE loses on every top-k
-recall/lift number above, the weighted model is the better choice for this
-use case despite its higher Brier score; calibration would matter more if
-the predicted probabilities were used directly (e.g. for cost-weighted
-decisions) rather than for ranking/thresholding.
-Figures: `reports/figures/calibration_weighted.png`,
-`reports/figures/calibration_smote.png`.
+Brier score alone is misleading here and shouldn't be read as a ranking of
+model quality — it rewards predicting probabilities close to the (tiny,
+~0.16%) true base rate everywhere, which a model that's *worse* at ranking
+can still do well if its probabilities are more conservative on average.
+RF's low Brier score in particular is deceptive: its probabilities are
+badly overconfident given the base rate (a constant base-rate prediction
+would itself score ~0.00164 Brier, so 0.0227 reflects systematic
+overestimation, not good calibration), likely an artifact of
+`class_weight="balanced"` reweighting the loss without recalibrating the
+output. SVM's score is similarly not a true probability — it's a sigmoid of
+`decision_function`, used only to make calibration/Brier computable at all,
+since `LinearSVC` has no native `predict_proba`. Given CatBoost/weighted
+XGBoost/RF all win on top-k recall/lift above, those are the better choices
+for this use case despite not having the lowest Brier scores; calibration
+would matter more if the predicted probabilities were used directly (e.g.
+cost-weighted decisions) rather than for ranking/thresholding.
+Figures: `reports/figures/calibration_{weighted,smote,catboost,rf,svm}.png`.
 
 ### SHAP feature importance
 
-Both models agree on the top drivers, dominated by land-cover composition,
-not weather:
+The three tree models (weighted XGBoost, CatBoost, RF) agree closely on the
+top drivers, dominated by land-cover composition, not weather:
 
-| Rank | Weighted | SMOTE |
-|---|---|---|
-| 1 | `pct_21` (developed, open space) | `pct_21` (developed, open space) |
-| 2 | `PS` (surface pressure) | `PS` |
-| 3 | `ndvi_7d_mean` | `pct_22` (developed, low intensity) |
-| 4 | `pct_22` | `PRECTOTCORR` |
-| 5 | `pct_52` (shrub/scrub) | `pct_23` (developed, medium intensity) |
+| Rank | Weighted | SMOTE | CatBoost | RF |
+|---|---|---|---|---|
+| 1 | `pct_21` (developed, open space) | `pct_21` | `pct_21` | `pct_21` |
+| 2 | `PS` (surface pressure) | `PS` | `PS` | `pct_22` (developed, low intensity) |
+| 3 | `ndvi_7d_mean` | `pct_22` | `pct_22` | `pct_23` (developed, medium intensity) |
+| 4 | `pct_22` | `PRECTOTCORR` | `ndvi_7d_mean` | `PS` |
+| 5 | `pct_52` (shrub/scrub) | `pct_23` | `pct_23` | `ndvi_7d_mean` |
 
 `pct_21`/`pct_22`/`pct_23` (developed land at increasing intensity) ranking
-above raw weather variables is consistent with wildfire ignition being
-strongly tied to human activity/wildland-urban interface, not just fuel/fire
-weather — matches the original project's stated WUI hypothesis. Worth
-flagging as a direction to dig into further (e.g. ignition-cause breakdown
-if available) rather than treating as fully explained here.
-Figures: `reports/figures/shap_summary_weighted.png`,
-`reports/figures/shap_summary_smote.png`.
-Full numbers: `reports/metrics/operational_eval_weighted.json`,
-`reports/metrics/operational_eval_smote.json`.
+above raw weather variables, across all three tree models, is consistent
+with wildfire ignition being strongly tied to human activity/wildland-urban
+interface, not just fuel/fire weather — matches the original project's
+stated WUI hypothesis. Worth flagging as a direction to dig into further
+(e.g. ignition-cause breakdown if available) rather than treating as fully
+explained here.
+
+The linear SVM's top features are different in kind, not just order —
+`vpd_proxy`, `T2M`, `RH2M` (weather/fire-weather features) dominate instead
+of land cover. This isn't SHAP for the SVM (LinearSVC has no cheap SHAP
+explainer); it's `|coefficient|` on the standardized, feature-selected
+inputs, so it's not directly comparable in magnitude to the tree models'
+SHAP values, only in rank — but the fact that a linear model leans on
+weather while every tree model leans on land cover suggests the land-cover
+signal is non-linear or threshold-like (e.g. "near this much developed
+land" rather than "more developed land is linearly riskier"), which a
+linear decision boundary can't capture as well.
+Figures: `reports/figures/shap_summary_{weighted,smote,catboost,rf,svm}.png`.
+Full numbers: `reports/metrics/operational_eval_{weighted,smote,catboost,rf,svm}.json`.
 
 ## Still open
 
-- The operational evaluation (top-k recall/lift/calibration/SHAP) above has
-  only been run for the two XGBoost models, not CatBoost/RF/SVM.
 - The grid-generation duplication and NDVI-pipeline duplication questions
   from `docs/inventory.md`'s open questions are unrelated to this run and
   still unresolved.
