@@ -256,6 +256,24 @@ def test_rolling_features_do_not_reach_into_the_previous_season():
         "a fire from the end of last season must not count toward this season's fires_last_7d"
 
 
+def test_fires_last_7d_sees_a_fire_within_a_short_season_so_far():
+    """REGRESSION GUARD (docs/leakage_audit.md section 6, item 3): early
+    in a season there aren't yet 7 same-season prior days to look back on.
+    The old code required a FULL 7-day window (min_periods=window, the
+    pandas default) before it would report anything, so it silently
+    reported 0 even when a real fire had happened earlier THIS season —
+    worse than just 'no data', it was actively wrong. min_periods=1 must
+    sum whatever same-season days ARE available instead of masking them
+    with a blanket 0."""
+    df = make_cell("A", "2023-06-01", fire_days=[1])  # fire on day index 1
+    out = add_fire_history_features(df.copy())
+    # Day index 4 is only 4 days into the season (fewer than 7 available),
+    # but the day-1 fire is real, known history and must be counted.
+    row = out.iloc[4]
+    assert row["fires_last_7d"] == 1, \
+        "a known fire earlier this (short) season must not be hidden by an incomplete 7-day window"
+
+
 def test_ndvi_interpolation_does_not_cross_season_boundary():
     """A missing NDVI reading at the start of a new season must not be
     forward-filled from the previous season's last reading — that's an

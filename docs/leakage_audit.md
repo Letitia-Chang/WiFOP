@@ -243,15 +243,16 @@ pipeline rebuild + full retrain + re-evaluation is substantial compute) —
 flagged here as a known, fixed-at-the-source bug whose downstream effect on
 `docs/results.md`'s existing numbers is not yet measured.
 
-## 6. Two more bugs found while preparing the WFIGS-fix rerun (2026-11-25)
+## 6. Three more bugs found while preparing the WFIGS-fix rerun (2026-11-25)
 
 Found while setting up the pipeline rerun that was supposed to just apply
-the item-5 WFIGS fix — neither was caught by the original audit or its
-regression tests, despite both tests existing and passing. Both are now
-fixed in `src/panel_transforms.py`, with new regression tests in
-`tests/test_panel_transforms.py` confirmed to catch each bug (verified by
-temporarily reintroducing each one and watching the corresponding test
-fail, same discipline as item #7's reproducibility harness).
+the item-5 WFIGS fix — none were caught by the original audit or its
+regression tests (the third, 6c, was found immediately while fixing 6b).
+All three are now fixed in `src/panel_transforms.py` (one only partially —
+see 6c), with new regression tests in `tests/test_panel_transforms.py`
+confirmed to catch each bug (verified by temporarily reintroducing each
+one and watching the corresponding test fail, same discipline as item
+#7's reproducibility harness).
 
 ### 6a. The NDVI "forward-only" fix (#3) didn't actually hold for interior gaps
 
@@ -303,9 +304,37 @@ first few days of each season now have fewer valid prior values within
 their own window (correctly — there genuinely isn't a window to look back
 on at the start of a new season), which produces a few more `NaN`
 weather-rolling values at each season's start that get dropped by the
-downstream `dropna` in each training script, and a few more `fires_last_*`
-values that correctly fall back to 0 instead of incorrectly carrying
-fire counts over from the previous season.
+downstream `dropna` in each training script (see item 3 below for why
+`fires_last_7d`/`14d` specifically need a different fix, not just a drop).
+
+### 6c. `fires_last_7d`/`14d` silently reported "no fires" during the gap it couldn't fix on its own (found 2026-11-25, same prep session)
+
+**The bug, found immediately after fixing 6b:** `.rolling(window)` with
+the pandas default `min_periods=window` returns `NaN` whenever fewer than
+`window` values are available — which, combined with the season-boundary
+fix above, is now true for the first `window-1` days of *every* season
+(there genuinely aren't 7/14 same-season prior rows yet). The old code
+then did `.fillna(0)`, silently turning "not enough history to know" into
+"zero fires" — actively wrong, not just missing, whenever a real fire had
+already happened earlier in that same (now-shorter) window. E.g. a fire 2
+days into a season would be invisible to `fires_last_7d` on day 5, when it
+should clearly still count.
+
+**Fix (partial — see limitation below):** `.rolling(window, min_periods=1)`
+instead of the default `min_periods=window` — sums whatever same-season
+prior days ARE available (1 to `window-1` of them) rather than requiring a
+full window before reporting anything. A known recent fire within the
+current season is no longer hidden.
+
+**Known remaining limitation, not fixed:** the raw panel only has rows for
+the fire season itself (no Oct-May rows at all), so a fire in the real
+gap month immediately before a season starts (e.g. late May) has no row
+in this dataframe to be rolled over — `min_periods=1` only helps with
+days that exist in this panel, not days that don't. The complete fix
+would mean computing fire history from the raw incident dates (which DO
+cover the full calendar year, unlike this grid×date panel) before
+restricting to fire-season rows — not done; flagged in
+`docs/results.md`'s "Still open" list rather than silently assumed fixed.
 
 ### Separately flagged, not fixed: UTC day boundary vs. local fire-weather day
 
@@ -324,10 +353,11 @@ been done. Flagged here rather than silently assumed correct; see
 
 ### Status
 
-Both bugs fixed in code and covered by regression tests as of this
-writing. **Not yet re-run through the full pipeline** — this is being
-done together with the item-5 WFIGS incident-type fix in one combined
-rerun (see `docs/results.md` for results once available), since isolating
-each fix's individual numerical contribution would roughly double the
-compute cost for limited portfolio value; each fix is independently
-justified as a correctness fix regardless of its measured effect size.
+All three fixed (6c only partially — see its limitation note) in code and
+covered by regression tests as of this writing. **Not yet re-run through
+the full pipeline** — this is being done together with the item-5 WFIGS
+incident-type fix in one combined rerun (see `docs/results.md` for results
+once available), since isolating each fix's individual numerical
+contribution would roughly double the compute cost for limited portfolio
+value; each fix is independently justified as a correctness fix regardless
+of its measured effect size.

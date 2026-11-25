@@ -498,20 +498,32 @@ falsify the earlier results.
   season-crossing contamination rather than a real effect — not confirmed
   either way, just flagged as a plausible connection worth re-checking
   once the pipeline is rerun.
-- **Two more real bugs found while preparing the WFIGS-fix rerun
-  (2026-11-25), both now fixed in code, neither yet re-run:** (1) the
-  earlier NDVI "forward-only" fix (#3) didn't actually hold for interior
-  gaps — `limit_direction="forward"` doesn't make interior interpolation
-  forward-only in pandas, only extrapolation at the edges does, so interior
-  NDVI gaps were still leaking future readings. Fixed with a plain
-  `.ffill()`. (2) every rolling/shift transform grouped by `grid_id` alone,
-  but the data is fire-season-only (no Oct-May rows), so September of one
-  year was adjacent, in row position, to June of the next — windows and
-  the `fire_tomorrow` label shift were silently reaching across an 8-month
-  gap. Most seriously, `fire_tomorrow` on the last day of every non-final
-  season was set to the following year's June 1st status instead of being
-  dropped (78,585 affected rows, 102 mislabeled positive). Fixed by
-  grouping every transform by `(grid_id, year)`. Full writeup:
-  `docs/leakage_audit.md` section 6. Also newly flagged, not fixed: a
-  possible UTC-vs-local day-boundary mismatch between the fire label date
-  and the weather data's day convention (same section).
+- **Three more real bugs found while preparing the WFIGS-fix rerun
+  (2026-11-25), fixed in code (one only partially), neither yet re-run:**
+  (1) the earlier NDVI "forward-only" fix (#3) didn't actually hold for
+  interior gaps — `limit_direction="forward"` doesn't make interior
+  interpolation forward-only in pandas, only extrapolation at the edges
+  does, so interior NDVI gaps were still leaking future readings. Fixed
+  with a plain `.ffill()`. (2) every rolling/shift transform grouped by
+  `grid_id` alone, but the data is fire-season-only (no Oct-May rows), so
+  September of one year was adjacent, in row position, to June of the
+  next — windows and the `fire_tomorrow` label shift were silently
+  reaching across an 8-month gap. Most seriously, `fire_tomorrow` on the
+  last day of every non-final season was set to the following year's June
+  1st status instead of being dropped (78,585 affected rows, 102
+  mislabeled positive). Fixed by grouping every transform by
+  `(grid_id, year)`. (3) a direct consequence of fixing (2):
+  `fires_last_7d`/`14d`'s default `min_periods=window` meant the first
+  `window-1` days of every season now had too little same-season history
+  to compute anything, and `.fillna(0)` silently turned "not enough
+  history to know" into "zero fires" — wrong whenever a real fire had
+  already happened earlier that same season. **Fixed only partially**:
+  `min_periods=1` now reports a real partial-window count instead of a
+  blanket 0, but a fire in the actual gap month right before a season
+  starts (e.g. late May) still has no row in this panel to be counted at
+  all — the complete fix needs fire history computed from the raw
+  incident dates (which cover the full year) before restricting to
+  fire-season rows, not done. Full writeup: `docs/leakage_audit.md`
+  section 6. Also newly flagged, not fixed: a possible UTC-vs-local
+  day-boundary mismatch between the fire label date and the weather
+  data's day convention (same section).

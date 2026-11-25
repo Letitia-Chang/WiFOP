@@ -107,11 +107,28 @@ def add_fire_history_features(df, target_col="fire_today"):
     "historical" feature. Shifting first means "last N days" excludes
     today. Grouped by (grid_id, year): see section 6 correction — without
     the year, early-June rolling windows would reach back into the
-    previous September."""
+    previous September.
+
+    `min_periods=1` (docs/leakage_audit.md section 6, item 3): the panel
+    only has fire-season rows (no Oct-May), so the first few days of each
+    season genuinely have fewer than `window` same-season prior rows to
+    look back on. The default `min_periods=window` would make `.rolling()`
+    return NaN there, which the old `.fillna(0)` then silently turned into
+    a flat "no fires" even when there had been one — a real fire 2 days
+    into a season would be invisible to `fires_last_7d` on day 5.
+    `min_periods=1` instead sums whatever same-season days ARE available
+    (1 to window-1 of them), so a known recent fire is never hidden by an
+    incomplete window. This is a PARTIAL fix, not a complete one: days in
+    the actual gap month before the season starts (e.g. late May) have no
+    row in this panel at all, so a fire in that gap is still invisible to
+    the first few days of June regardless of `min_periods` — fixing that
+    would require computing fire history from the raw incident dates
+    before restricting to fire-season rows, which hasn't been done (see
+    docs/results.md's "Still open" list)."""
     for window in (7, 14):
         col = f"fires_last_{window}d"
         df[col] = df.groupby(_season_groups(df))[target_col].transform(
-            lambda s, w=window: s.shift(1).rolling(w).sum()
+            lambda s, w=window: s.shift(1).rolling(w, min_periods=1).sum()
         )
         df[col] = df[col].fillna(0)
     return df
