@@ -10,9 +10,23 @@ flow (which expected a pre-exported irwin_2023-07.csv of unknown origin and
 only covered one month) for the full 4-year range.
 
 Paginates the FeatureServer's query endpoint (2000-record page limit) over
-FireDiscoveryDateTime 2020-01-01..2023-12-31, POOState = 'US-CA', and writes
-columns (date, lat, lon, incident_id) directly to data/interim/irwin.csv,
-matching what src/combine_data.py expects.
+FireDiscoveryDateTime 2020-01-01..2023-12-31, POOState = 'US-CA',
+IncidentTypeCategory = 'WF' (wildfire only — see below), and writes columns
+(date, lat, lon, incident_id) directly to data/interim/irwin.csv, matching
+what src/combine_data.py expects.
+
+Label semantics (see docs/leakage_audit.md "Fire-label date and type
+semantics" for the full writeup):
+
+- `date` is FireDiscoveryDateTime, i.e. when the fire was first reported/
+  confirmed, not a true ignition timestamp — WFIGS has no ignition-date
+  field at all, so this is the best available proxy, not a leakage bug.
+- IncidentTypeCategory was NOT filtered in earlier versions of this
+  script: of the 49,539 CA incident rows previously downloaded, 1,214
+  (2.45%) were IncidentTypeCategory='RX' (prescribed/planned burns) and 22
+  were 'CX' (complexes — aggregations of multiple incidents, ambiguous but
+  negligible in count). Those aren't "wildfire ignitions" in the sense this
+  project predicts, so they're excluded here going forward.
 
 Usage:
     python scripts/download_irwin_wfigs.py
@@ -30,10 +44,11 @@ QUERY_URL = (
 OUT_PATH = Path(__file__).resolve().parent.parent / "data" / "interim" / "irwin.csv"
 PAGE_SIZE = 2000
 WHERE = (
-    "POOState='US-CA' AND FireDiscoveryDateTime >= timestamp '2020-01-01 00:00:00' "
+    "POOState='US-CA' AND IncidentTypeCategory='WF' "
+    "AND FireDiscoveryDateTime >= timestamp '2020-01-01 00:00:00' "
     "AND FireDiscoveryDateTime <= timestamp '2023-12-31 23:59:59'"
 )
-OUT_FIELDS = "IrwinID,FireDiscoveryDateTime,InitialLatitude,InitialLongitude"
+OUT_FIELDS = "IrwinID,FireDiscoveryDateTime,InitialLatitude,InitialLongitude,IncidentTypeCategory"
 
 
 def fetch_page(offset, retries=3):

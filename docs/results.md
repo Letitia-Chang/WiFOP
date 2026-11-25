@@ -445,11 +445,19 @@ falsify the earlier results.
   `train_random_forest_wildfire.py`, `train_catboost_wildfire.py`,
   `svm_downsample_smote.py`, `evaluate_model.py`, `ablation_land_cover.py`,
   `bootstrap_ci.py`, `tune_models.py`).
-- **Fire-label date semantics were never audited.** Does WFIGS's `date`
-  field mean ignition date or discovery/reporting date? If it's discovery,
-  there's reporting lag baked into the label that's a different, subtler
-  issue than anything in the leakage audit, and it would affect whether
-  "next-day" is even the right framing.
+- ~~**Fire-label date semantics were never audited.**~~ **Audited; see
+  `docs/leakage_audit.md` section 5.** Two findings: (a) WFIGS's `date`
+  field (`FireDiscoveryDateTime`) is a discovery/confirmation timestamp,
+  not ignition — but WFIGS has no ignition-date field at all, so this is a
+  structural data limitation shared by every public wildfire dataset, not
+  a fixable bug; the within-system reporting lag is negligible (~11 min
+  median) at the daily granularity this project uses. (b) Found a real,
+  separate bug while checking: the label download never filtered by
+  incident type, so **2.45% of the 49,539 "fire" labels this whole project
+  has used are prescribed burns (RX), not wildfires**. Fixed in
+  `scripts/download_irwin_wfigs.py` (now filters `IncidentTypeCategory='WF'`)
+  — **not yet re-run through the full pipeline/retrain**, so this doesn't
+  change any number reported elsewhere in this document yet.
 - **No reproducibility harness.** No `environment.yml`/`requirements.txt`,
   no CI, no regression test guarding the fixed leakage bugs (e.g. "assert
   the rolling fire-history feature excludes today"). Someone touching the

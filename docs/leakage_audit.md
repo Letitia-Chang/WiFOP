@@ -159,3 +159,86 @@ After these fixes, expect PR-AUC to drop substantially from the original
 0.085–0.087 — that's the point: the original numbers are inflated by leakage,
 and the rewritten baselines (persistence, historical fire rate) need to be beaten
 by a model trained without these shortcuts.
+
+## 5. Fire-label date and type semantics (critique item #6, 2026-11-25)
+
+Two separate questions about what the fire label (`date`, from WFIGS'
+`FireDiscoveryDateTime`) and the incident set actually represent, raised as
+an open item in the post-leakage-audit critique (see `docs/results.md`) and
+checked here against the live WFIGS_Incident_Locations FeatureServer schema
+and real 2020–2023 CA data.
+
+### 5a. Is `FireDiscoveryDateTime` an ignition date? (Not fixable — a data
+limitation, not a bug)
+
+**No.** Per NIFC/IRWIN's own field semantics (the InFORM data dictionary's
+definition, and corroborated by the field's name), `FireDiscoveryDateTime`
+is *"the date and time a fire was reported as discovered or confirmed to
+exist,"* not an ignition timestamp. **WFIGS has no ignition-date field at
+all** — querying the live FeatureServer schema (97 fields) turns up
+`FireDiscoveryDateTime`, `ContainmentDateTime`, `ControlDateTime`,
+`FireOutDateTime`, `InitialResponseDateTime`, `CreatedOnDateTime_dt`,
+`ModifiedOnDateTime_dt`, and several ICS-209-report timestamps, but nothing
+representing "when the fire actually started." This is a known, structural
+limitation of wildfire record-keeping in general (most fires, especially
+remote/wildland ones, are noticed some time after actual ignition — by a
+lookout, satellite detection, or a public report) and applies equally to
+every other public wildfire dataset (FPA-FOD, FIRMS, etc.) — it is not
+something introduced by this project or fixable from this data source.
+This project's "next-day" framing should be read as "next day after a fire
+would first be reported/confirmed," which is the honest framing of what
+the label can support, not "next day after ignition."
+
+Checked for a confound at the *database* level (is there at least a
+reporting-lag issue between discovery and when WFIGS records it?): sampled
+2,000 real 2023 CA incidents and compared `FireDiscoveryDateTime` against
+`CreatedOnDateTime_dt` (when the system created the record). Median lag
+0.008 days (~11 minutes), 90th percentile 0.046 days (~1 hour) — at the
+daily granularity this whole pipeline operates on, discovery and database
+recording are effectively same-day for the vast majority of records (one
+115-day outlier, likely a backfilled correction, and 12 negative-lag
+records, likely rounding/backdating — both negligible in count). So there's
+no material *additional* lag beyond the discovery-vs-ignition gap already
+discussed above.
+
+### 5b. Is every record actually a wildfire? (Fixable — a real bug, fixed)
+
+**No — found a real label-contamination bug.** The download script
+(`scripts/download_irwin_wfigs.py`) filtered only on `POOState='US-CA'`
+and the date range; it never filtered on `IncidentTypeCategory`. Re-querying
+the live FeatureServer with the exact same filters the script already used
+(same CA bounding box, same date range) and grouping by
+`IncidentTypeCategory` on the 49,539 rows previously downloaded:
+
+| IncidentTypeCategory | Count | % |
+|---|---|---|
+| WF (wildfire) | 48,303 | 97.5% |
+| RX (prescribed/planned burn) | 1,214 | 2.45% |
+| CX (complex — aggregation of multiple incidents) | 22 | 0.04% |
+
+**2.45% of the "fire" labels this entire project has been trained and
+evaluated against are prescribed burns** — planned, intentionally set fires
+with fundamentally different timing dynamics (chosen for a safe weather
+window, often pre-announced) than the wildfire ignitions this project is
+actually trying to predict. CX is negligible in count and left out of this
+analysis (a complex is itself an aggregation, not a distinct incident type
+with different dynamics).
+
+**Fix:** added `IncidentTypeCategory='WF'` to the download script's `WHERE`
+clause. This is a genuine, if small, mislabeling bug — not caught by the
+original leakage audit because the audit focused on time alignment, not on
+whether the label's *content* (what counts as a "fire") was correct.
+
+**Impact not yet re-run.** At 2.45% of positive labels in an already
+extremely rare-event setting (0.16% base rate), this could move metrics by
+a small but non-negligible amount — rare-event models are sensitive to
+small changes in an already-tiny positive set, and prescribed burns likely
+have distinguishable weather/timing signatures (a planned burn needs
+specific humidity/wind conditions to be legally permitted) that may have
+been easier for the model to rank highly, inflating apparent skill
+slightly. Re-downloading labels, rebuilding the clean panel, and retraining
+all five models is deliberately **not done yet** (the 2.45% contamination
+rate makes a large shift in the headline conclusions unlikely, and a
+pipeline rebuild + full retrain + re-evaluation is substantial compute) —
+flagged here as a known, fixed-at-the-source bug whose downstream effect on
+`docs/results.md`'s existing numbers is not yet measured.
