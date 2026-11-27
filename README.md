@@ -1,4 +1,4 @@
-# WiFOP — Wildfire Outbreak Prediction (rework in progress)
+# WiFOP — Wildfire Outbreak Prediction
 
 [![Tests](https://github.com/Letitia-Chang/WiFOP/actions/workflows/tests.yml/badge.svg)](https://github.com/Letitia-Chang/WiFOP/actions/workflows/tests.yml)
 
