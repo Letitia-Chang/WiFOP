@@ -5,6 +5,14 @@
 Predicting next-day wildfire ignition on a 5 km grid over California using daily
 weather, vegetation, and land-cover data, 2020–2023.
 
+![Top-k recall on the held-out 2023 test set: the per-cell historical fire-rate baseline catches 79% of fires in its riskiest 10% of grid-cell-days, versus 76% for weighted XGBoost](reports/figures/readme_baseline_vs_model.png)
+
+*Headline result: a per-cell historical fire-rate baseline beats the best of five
+trained models on PR-AUC (0.104 vs 0.087) and top-k recall; the models win only
+on ROC-AUC. Most of the predictive skill is location, not day-to-day weather.
+Numbers from the final rerun ([`docs/results.md`](docs/results.md));
+figure drawn by `src/plot_readme_figure.py` from `reports/metrics/rerun_compare.json`.*
+
 This repo is a solo rework of the final project for ISYE 6740 (Computational Data
 Analysis), Fall 2025, Georgia Tech. **Original project team (Group 9):**
 Tingya (Letitia) Chang, Diyang Pang, Yini Li, Xiaoyi Huang, Nilavrah Sensarma.
